@@ -220,10 +220,10 @@ export default function Home() {
               marginTop: '40px'
             }}>
               {[
-                { emoji: '🧤', title: 'Goalkeeper', desc: 'Position 1 - Stopper at the back' },
-                { emoji: '🛡️', title: 'Defenders', desc: 'Positions 2-4 - Your defensive line' },
-                { emoji: '🎯', title: 'Midfielders', desc: 'Positions 5-8 - Control the game' },
-                { emoji: '⚡', title: 'Strikers', desc: 'Positions 9-11 - Attack & Score' }
+                { emoji: '🧤', title: 'Goalkeeper', desc: 'Position 1 — last line of defence' },
+                { emoji: '🛡️', title: 'Defenders', desc: 'Positions 2-5 — your back line' },
+                { emoji: '🎯', title: 'Midfielders', desc: 'Positions 6-9 — control the game' },
+                { emoji: '⚡', title: 'Strikers', desc: 'Positions 10-11 — attack and score' }
               ].map((pos, idx) => (
                 <div
                   key={idx}
