@@ -2,10 +2,15 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Intro from './Intro';
 
 export default function Home() {
   const [username, setUsername] = useState('');
   const [activeTab, setActiveTab] = useState('intro');
+  // Plays on every visit, per design. Intro self-skips for reduced-motion users.
+  const [showIntro, setShowIntro] = useState(true);
+
+  if (showIntro) return <Intro onDone={() => setShowIntro(false)} />;
 
   return (
     <main style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f1c32 0%, #1a3a52 50%, #0f2847 100%)' }}>
@@ -221,9 +226,9 @@ export default function Home() {
             }}>
               {[
                 { emoji: '🧤', title: 'Goalkeeper', desc: 'Position 1 — last line of defence' },
-                { emoji: '🛡️', title: 'Defenders', desc: 'Positions 2-5 — your back line' },
-                { emoji: '🎯', title: 'Midfielders', desc: 'Positions 6-9 — control the game' },
-                { emoji: '⚡', title: 'Strikers', desc: 'Positions 10-11 — attack and score' }
+                { emoji: '🛡️', title: 'Defenders', desc: 'Positions 2-5 — your back four' },
+                { emoji: '🎯', title: 'Midfielders', desc: 'Positions 6, 7, 8 & 11 — control the game' },
+                { emoji: '⚡', title: 'Strikers', desc: 'Positions 9 & 10 — attack and score' }
               ].map((pos, idx) => (
                 <div
                   key={idx}
