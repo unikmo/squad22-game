@@ -1,0 +1,17 @@
+# Build artefacts and dependencies
+.next/
+node_modules/
+*.log
+*.lnk
+
+# Local env
+.env
+.env.*
+!.env.example
+
+# Design source files — ~22MB, not needed by the app at runtime.
+# Web-ready card images belong in public/images/cards/ instead.
+3D mockups/
+PNG 2,5x3,5in/
+logo png transparent bg/
+box/

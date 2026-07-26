@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+# NOTE: package-lock.json is intentionally COMMITTED so Vercel installs the
+# exact dependency versions this project was built and tested against.
+yarn.lock
+pnpm-lock.yaml
+
+# Next.js
+.next/
+out/
+build/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Legacy/Old files
+server.js
+db-init.js
+scripts/
+
+# Vercel
+.vercel/
