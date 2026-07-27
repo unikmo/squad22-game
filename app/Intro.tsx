@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { playScore, canAutoplay } from './introScore';
 
 /**
  * Squad22 cold open — runs automatically on load, ~10s.
@@ -13,9 +14,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * colours, so position = ceil(n / 4). Home XI takes the 1st of each group,
  * away XI the 3rd, guaranteeing different trait colours per side.
  *
- * Audio is synthesised via Web Audio (no files ship). Browsers block autoplay
- * audio, so the sequence starts silent and a speaker toggle unlocks it — the
- * visuals never wait on a click.
+ * Audio is a synthesised score (see introScore.ts) — no files ship.
+ *
+ * Two start paths. We probe whether the browser will let audio play without a
+ * gesture: Chrome permits it once its Media Engagement Index is high enough,
+ * Safari and Firefox via per-site permission. If permitted the film rolls
+ * immediately with music. If refused — the normal first-visit case — we show
+ * the badge poster with a play control instead of running it silently.
  */
 
 const PITCH = { x: 40, y: 40, w: 920, h: 480 };
@@ -49,138 +54,61 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
 export default function Intro({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
-  const [audioOn, setAudioOn] = useState(false);
+  const [gate, setGate] = useState<'wait' | 'splash' | 'none'>('wait');
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const audio = useRef<AudioContext | null>(null);
   const done = useRef(onDone);
   done.current = onDone;
 
-  // ---- audio ---------------------------------------------------------------
-  const ctx = useCallback((): AudioContext | null => {
-    if (!audio.current) {
-      const AC = window.AudioContext
-        || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AC) return null;
-      audio.current = new AC();
-    }
-    return audio.current.state === 'running' ? audio.current : null;
+  /** Runs the visual timeline; music is scheduled separately but from t=0. */
+  const runSequence = useCallback((withSound: boolean) => {
+    const list = timers.current;
+    const at = (ms: number, fn: () => void) => { list.push(setTimeout(fn, ms)); };
+
+    if (withSound && audio.current) playScore(audio.current);
+    setStep(1);                                  // slow fall begins
+    at(1550, () => setStep(2));                  // detonation
+    at(2050, () => setStep(3));                  // pitch emerges
+    at(2750, () => setStep(4));                  // goalposts
+    at(3250, () => setStep(5));                  // home XI
+    at(4300, () => setStep(6));                  // away XI
+    at(5350, () => setStep(7));                  // staff
+    at(6150, () => setStep(8));                  // formation callout
+    at(7100, () => setStep(9));                  // logo
+    at(8300, () => setStep(10));                 // tagline
+    at(9900, () => setStep(11));                 // fade
+    at(10500, () => done.current());
   }, []);
 
-  const noise = (c: AudioContext, dur: number) => {
-    const buf = c.createBuffer(1, Math.max(1, Math.ceil(c.sampleRate * dur)), c.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    const s = c.createBufferSource(); s.buffer = buf; return s;
-  };
-
-  /** Rising whine as the ball falls. */
-  const fall = useCallback(() => {
-    const c = ctx(); if (!c) return;
-    const t = c.currentTime;
-    const o = c.createOscillator(); const g = c.createGain();
-    o.type = 'sawtooth';
-    o.frequency.setValueAtTime(150, t);
-    o.frequency.exponentialRampToValueAtTime(760, t + 1.5);
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(700, t);
-    lp.frequency.exponentialRampToValueAtTime(2600, t + 1.5);
-    g.gain.setValueAtTime(0.001, t);
-    g.gain.linearRampToValueAtTime(0.09, t + 1.35);
-    g.gain.linearRampToValueAtTime(0, t + 1.55);
-    o.connect(lp); lp.connect(g); g.connect(c.destination);
-    o.start(t); o.stop(t + 1.6);
-  }, [ctx]);
-
-  /** Detonation: sub drop + wideband blast + debris tail. */
-  const boom = useCallback(() => {
-    const c = ctx(); if (!c) return;
-    const t = c.currentTime;
-    const o = c.createOscillator(); const g = c.createGain();
-    o.type = 'sine';
-    o.frequency.setValueAtTime(190, t);
-    o.frequency.exponentialRampToValueAtTime(28, t + 0.8);
-    g.gain.setValueAtTime(0.85, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
-    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 1.35);
-
-    const s = noise(c, 1.1);
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(5200, t);
-    lp.frequency.exponentialRampToValueAtTime(320, t + 1.0);
-    const ng = c.createGain();
-    ng.gain.setValueAtTime(0.7, t);
-    ng.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
-    s.connect(lp); lp.connect(ng); ng.connect(c.destination); s.start(t);
-  }, [ctx]);
-
-  const whoosh = useCallback(() => {
-    const c = ctx(); if (!c) return;
-    const t = c.currentTime;
-    const s = noise(c, 0.6);
-    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.1;
-    bp.frequency.setValueAtTime(320, t);
-    bp.frequency.exponentialRampToValueAtTime(2600, t + 0.42);
-    const g = c.createGain();
-    g.gain.setValueAtTime(0.001, t);
-    g.gain.linearRampToValueAtTime(0.19, t + 0.17);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
-    s.connect(bp); bp.connect(g); g.connect(c.destination); s.start(t);
-  }, [ctx]);
-
-  const crowd = useCallback(() => {
-    const c = ctx(); if (!c) return;
-    const t = c.currentTime;
-    const s = noise(c, 4);
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100;
-    const g = c.createGain();
-    g.gain.setValueAtTime(0.001, t);
-    g.gain.linearRampToValueAtTime(0.16, t + 0.8);
-    g.gain.linearRampToValueAtTime(0.05, t + 4);
-    s.connect(lp); lp.connect(g); g.connect(c.destination); s.start(t);
-  }, [ctx]);
-
-  const impact = useCallback(() => {
-    const c = ctx(); if (!c) return;
-    const t = c.currentTime;
-    const o = c.createOscillator(); const g = c.createGain();
-    o.type = 'sine';
-    o.frequency.setValueAtTime(112, t);
-    o.frequency.exponentialRampToValueAtTime(36, t + 0.55);
-    g.gain.setValueAtTime(0.6, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 1);
-    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 1.05);
-  }, [ctx]);
-
-  // ---- timeline ------------------------------------------------------------
+  // ---- start: autoplay if the browser permits, otherwise show the splash ----
   useEffect(() => {
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
       done.current(); return;
     }
-    const list = timers.current;
-    const at = (ms: number, fn: () => void) => { list.push(setTimeout(fn, ms)); };
-
-    fall();
-    setStep(1);                                        // slow fall begins
-    at(1550, () => { boom(); setStep(2); });           // detonation
-    at(2050, () => setStep(3));                        // pitch emerges
-    at(2750, () => setStep(4));                        // goalposts
-    at(3250, () => { whoosh(); setStep(5); });         // home XI
-    at(4300, () => { whoosh(); setStep(6); });         // away XI
-    at(5350, () => setStep(7));                        // staff
-    at(6150, () => setStep(8));                        // formation callout
-    at(7100, () => { impact(); crowd(); setStep(9); });// logo
-    at(8300, () => setStep(10));                       // tagline
-    at(9900, () => setStep(11));                       // fade
-    at(10500, () => done.current());
-    return () => { list.forEach(clearTimeout); };
-  }, [fall, boom, whoosh, crowd, impact]);
-
-  const enableSound = () => {
+    let cancelled = false;
     const AC = window.AudioContext
-      || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const a = audio.current ?? new AC();
-    audio.current = a;
-    a.resume().then(() => setAudioOn(true)).catch(() => {});
+      || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+    if (!AC) { setGate('none'); runSequence(false); return; }
+
+    const c = new AC();
+    audio.current = c;
+    canAutoplay(c).then((ok) => {
+      if (cancelled) return;
+      if (ok) { setGate('none'); runSequence(true); }
+      else { setGate('splash'); }      // browser refused audio — offer the poster
+    });
+
+    const list = timers.current;
+    return () => { cancelled = true; list.forEach(clearTimeout); };
+  }, [runSequence]);
+
+  /** Splash click: a real gesture, so audio is now unlocked. */
+  const start = () => {
+    const c = audio.current;
+    setGate('none');
+    if (c) c.resume().then(() => runSequence(true)).catch(() => runSequence(false));
+    else runSequence(false);
   };
 
   const skip = () => {
@@ -243,6 +171,10 @@ export default function Intro({ onDone }: { onDone: () => void }) {
                              to   { transform: scale(1); opacity: 1; } }
         @keyframes pitchIn { from { transform: scale(.82); opacity: 0; }
                              to   { transform: scale(1); opacity: 1; } }
+        @keyframes posterIn { from { transform: scale(.86) translateY(18px); opacity: 0; }
+                              to   { transform: scale(1) translateY(0); opacity: 1; } }
+        @keyframes breathe  { 0%,100% { transform: scale(1); opacity: .8; }
+                              50%     { transform: scale(1.12); opacity: 1; } }
 
         .fall    { animation: fallSlow 1.55s cubic-bezier(.55,.02,.85,.42) forwards;
                    transform-box: fill-box; transform-origin: center; }
@@ -270,7 +202,12 @@ export default function Intro({ onDone }: { onDone: () => void }) {
           <clipPath id="cardClip">
             <rect x={-CW / 2} y={-CH / 2} width={CW} height={CH} rx="4" />
           </clipPath>
-          <clipPath id="ballClip"><circle r="26" /></clipPath>
+          <clipPath id="ballClip"><circle r="30" /></clipPath>
+          <radialGradient id="ballShade" cx="36%" cy="30%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="62%" stopColor="#f2f2f0" />
+            <stop offset="100%" stopColor="#bfc2c4" />
+          </radialGradient>
           <radialGradient id="flashG">
             <stop offset="0%" stopColor="#fff" stopOpacity="1" />
             <stop offset="45%" stopColor="#ffe89a" stopOpacity=".85" />
@@ -322,21 +259,32 @@ export default function Intro({ onDone }: { onDone: () => void }) {
           </g>
         )}
 
-        {/* falling ball */}
+        {/* falling ball — branded, spinning, motion-blurred */}
         {step === 1 && (
           <g transform={`translate(500,${CY})`}>
             <g className="fall">
-              <circle r="26" fill="#fdfdfd" />
-              <g clipPath="url(#ballClip)" fill="#141414">
-                <path d="M0 -13 l13 9.5 -5 15.3 -16 0 -5-15.3 z" />
-                <path d="M0 -37 l11 8 -4.2 13 -13.8 0 -4.2-13 z" />
-                <path d="M33 -10 l11 8 -4.2 13 -13.8 0 -4.2-13 z" />
-                <path d="M-33 -10 l11 8 -4.2 13 -13.8 0 -4.2-13 z" />
-                <path d="M21 25 l11 8 -4.2 13 -13.8 0 -4.2-13 z" />
-                <path d="M-21 25 l11 8 -4.2 13 -13.8 0 -4.2-13 z" />
+              <circle r="30" fill="url(#ballShade)" />
+              <g clipPath="url(#ballClip)">
+                <g fill="#15171a">
+                  <path d="M0 -15 l15 10.9 -5.7 17.6 -18.6 0 -5.7-17.6 z" />
+                  <path d="M0 -43 l12.6 9.2 -4.8 14.9 -15.6 0 -4.8-14.9 z" />
+                  <path d="M38 -12 l12.6 9.2 -4.8 14.9 -15.6 0 -4.8-14.9 z" />
+                  <path d="M-38 -12 l12.6 9.2 -4.8 14.9 -15.6 0 -4.8-14.9 z" />
+                  <path d="M24 29 l12.6 9.2 -4.8 14.9 -15.6 0 -4.8-14.9 z" />
+                  <path d="M-24 29 l12.6 9.2 -4.8 14.9 -15.6 0 -4.8-14.9 z" />
+                </g>
+                {/* wordmark curved across the ball */}
+                <g className="spin-txt">
+                  <path id="ballArc" d="M-21 2 A 21 21 0 0 0 21 2" fill="none" />
+                  <text fontSize="11.5" fontWeight="900" fill="#fff" letterSpacing=".6">
+                    <textPath href="#ballArc" startOffset="50%" textAnchor="middle">SQUAD</textPath>
+                  </text>
+                  <text x="-5.5" y="-4" fontSize="12" fontWeight="900" fill="#e63946">2</text>
+                  <text x="1.5" y="-4" fontSize="12" fontWeight="900" fill="#ffd93d">2</text>
+                </g>
               </g>
-              <circle r="26" fill="none" stroke="rgba(0,0,0,.25)" strokeWidth="1.6" />
-              <ellipse cx="-9" cy="-10" rx="7" ry="4.5" fill="rgba(255,255,255,.55)" />
+              <circle r="30" fill="none" stroke="rgba(0,0,0,.3)" strokeWidth="1.6" />
+              <ellipse cx="-10" cy="-12" rx="8.5" ry="5.5" fill="rgba(255,255,255,.5)" />
             </g>
           </g>
         )}
@@ -416,19 +364,50 @@ export default function Intro({ onDone }: { onDone: () => void }) {
         )}
       </svg>
 
-      {!audioOn && step < 11 && (
-        <button onClick={enableSound} title="Enable sound"
+      {/* Poster shown only when the browser refuses audio autoplay.
+          No copy explaining the mechanics — just the badge and a play control. */}
+      {gate === 'splash' && (
+        <div
+          onClick={start}
           style={{
-            position: 'absolute', right: 24, top: 24, padding: '9px 18px', fontSize: 13,
-            fontWeight: 700, letterSpacing: 1, color: 'rgba(255,255,255,.8)',
-            background: 'rgba(255,255,255,.09)', border: '1px solid rgba(255,255,255,.24)',
-            borderRadius: 999, cursor: 'pointer',
-          }}>
-          🔊 Sound
-        </button>
+            position: 'absolute', inset: 0, cursor: 'pointer',
+            background: 'radial-gradient(circle at 50% 44%, #14532a 0%, #061711 58%, #020806 100%)',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 34,
+          }}
+        >
+          <div style={{
+            position: 'absolute', width: 620, height: 620, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(0,230,118,.16) 0%, transparent 68%)',
+            animation: 'breathe 3.6s ease-in-out infinite',
+          }} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/logo.webp" alt="Squad22"
+            style={{
+              width: 'min(46vw, 380px)', position: 'relative',
+              filter: 'drop-shadow(0 24px 60px rgba(0,0,0,.75))',
+              animation: 'posterIn .9s cubic-bezier(.2,.9,.25,1) both',
+            }} />
+          <button
+            onClick={start}
+            aria-label="Play intro"
+            style={{
+              position: 'relative', width: 92, height: 92, borderRadius: '50%',
+              border: '2px solid rgba(255,255,255,.85)', background: 'rgba(0,230,118,.16)',
+              backdropFilter: 'blur(6px)', cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 50px rgba(0,230,118,.5)',
+              animation: 'posterIn .9s cubic-bezier(.2,.9,.25,1) .18s both',
+            }}
+          >
+            <svg width="30" height="34" viewBox="0 0 30 34">
+              <path d="M3 2 L28 17 L3 32 Z" fill="#fff" />
+            </svg>
+          </button>
+        </div>
       )}
 
-      {step < 11 && (
+      {gate === 'none' && step > 0 && step < 11 && (
         <button onClick={skip}
           style={{
             position: 'absolute', right: 24, bottom: 24, padding: '9px 20px', fontSize: 13,
