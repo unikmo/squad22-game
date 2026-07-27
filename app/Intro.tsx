@@ -93,12 +93,20 @@ export default function Intro({ onDone }: { onDone: () => void }) {
     if (!AC) { setGate('none'); runSequence(false); return; }
     const c = new AC();
     audio.current = c;
-    canAutoplay(c).then((ok) => {
-      if (cancelled) return;
+    let settled = false;
+    const decide = (ok: boolean) => {
+      if (cancelled || settled) return;
+      settled = true;
       if (ok) { setGate('none'); runSequence(true); } else setGate('splash');
-    });
+    };
+
+    canAutoplay(c).then(decide).catch(() => decide(false));
+    // Safety net: never leave the viewer staring at an empty backdrop if the
+    // probe stalls or throws for any reason.
+    const guard = setTimeout(() => decide(false), 700);
+
     const list = timers.current;
-    return () => { cancelled = true; list.forEach(clearTimeout); };
+    return () => { cancelled = true; clearTimeout(guard); list.forEach(clearTimeout); };
   }, [runSequence]);
 
   const start = () => {

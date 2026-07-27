@@ -254,11 +254,16 @@ export function playScore(c: AudioContext) {
  * Firefox allow it via per-site permission. First-time visitors normally can't.
  */
 export async function canAutoplay(c: AudioContext): Promise<boolean> {
-  // No early return on c.state: an `if (c.state === 'running') return true`
-  // narrows the type for the rest of the function, so the closing comparison
-  // becomes a compile error. resume() on a running context is a harmless no-op.
+  // Chrome does NOT reject resume() on a blocked context — the promise simply
+  // stays pending until a user gesture arrives, which would hang the caller
+  // forever. So race it against a short timer and judge by state afterwards.
+  //
+  // No early return on c.state either: `if (c.state === 'running') return true`
+  // narrows the type for the rest of the function and makes the closing
+  // comparison a no-overlap compile error.
+  const timeout = new Promise<void>((resolve) => setTimeout(resolve, 250));
   try {
-    await c.resume();
+    await Promise.race([c.resume(), timeout]);
   } catch {
     return false;
   }
