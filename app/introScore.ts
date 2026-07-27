@@ -254,7 +254,9 @@ export function playScore(c: AudioContext) {
  * Firefox allow it via per-site permission. First-time visitors normally can't.
  */
 export async function canAutoplay(c: AudioContext): Promise<boolean> {
-  if (c.state === 'running') return true;
+  // No early return on c.state: an `if (c.state === 'running') return true`
+  // narrows the type for the rest of the function, so the closing comparison
+  // becomes a compile error. resume() on a running context is a harmless no-op.
   try {
     await c.resume();
   } catch {
