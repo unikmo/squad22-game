@@ -55,10 +55,10 @@
 
 @keyframes glow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+    box-shadow: 0 0 20px rgba(61, 155, 224, 0.3);
   }
   50% {
-    box-shadow: 0 0 40px rgba(0, 255, 0, 0.6);
+    box-shadow: 0 0 40px rgba(61, 155, 224, 0.6);
   }
 }
 
@@ -263,7 +263,7 @@ button:disabled {
 /* Football pitch pattern */
 .pitch-background {
   position: relative;
-  background: linear-gradient(90deg, #1a4d2e 0%, #2d6a4f 50%, #1a4d2e 100%);
+  background: linear-gradient(90deg, #162638 0%, #1f3a56 50%, #162638 100%);
   border-top: 3px solid #fff;
   border-bottom: 3px solid #fff;
 }
@@ -309,8 +309,8 @@ button:disabled {
 }
 
 .player-card.selected {
-  border: 3px solid #00ff00;
-  box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+  border: 3px solid #3d9be0;
+  box-shadow: 0 0 20px rgba(61, 155, 224, 0.5);
   animation: glow 1s ease-in-out infinite;
 }
 
