@@ -185,67 +185,77 @@ function crowd(c: Ctx, t: number, dur: number, gain = 0.11) {
 }
 
 /**
- * Schedules the whole cue. Cue times mirror the animation steps in Intro.tsx.
- * Returns a master gain node so the caller can fade or stop everything.
+ * Schedules the whole cue. Cue times mirror the animation steps in Intro.tsx
+ * (a slower ~14.7s cut: pitch -> XIs -> staff -> 11/11 -> ball -> 22 -> shield
+ * -> tagline). The "22" reveal itself pops in .62s after its step fires (see
+ * the .bang animation-delay in Intro.tsx), so the detonation cue is placed at
+ * that same offset rather than the raw step time.
  */
 export function playScore(c: AudioContext) {
   const t0 = c.currentTime + 0.03;
 
-  // 0.00-1.10  pitch draws in: low drone, sparse pulse
-  sub(c, t0, N.D1, 1.5, 0.3);
+  // 0.00-1.70  pitch draws in: low drone, sparse pulse
+  sub(c, t0, N.D1, 2.0, 0.3);
   kick(c, t0 + 0.05, 0.55);
-  crowd(c, t0, 6.2, 0.06);
+  crowd(c, t0, 9.6, 0.06);
 
-  // 1.10  blue XI arrives — stab, four-on-the-floor begins
-  brass(c, t0 + 1.1, [N.D2, N.A2, N.D3], 0.6, 0.18);
-  kick(c, t0 + 1.1, 0.85);
-  sub(c, t0 + 1.15, N.D2, 1.9, 0.34);
-  [1.6, 2.1, 2.6].forEach((t) => kick(c, t0 + t, 0.65));
-  snare(c, t0 + 2.1, 0.24);
+  // 1.70  blue XI arrives — stab, four-on-the-floor begins
+  brass(c, t0 + 1.7, [N.D2, N.A2, N.D3], 0.6, 0.18);
+  kick(c, t0 + 1.7, 0.85);
+  sub(c, t0 + 1.75, N.D2, 2.6, 0.34);
+  [2.2, 2.7].forEach((t) => kick(c, t0 + t, 0.65));
+  snare(c, t0 + 2.7, 0.24);
 
-  // 2.10  red XI answers a fifth up
-  brass(c, t0 + 2.1, [N.A2, N.C4, N.A3], 0.6, 0.18);
-  [3.1, 3.6, 4.1].forEach((t) => kick(c, t0 + t, 0.7));
-  snare(c, t0 + 3.1, 0.26);
-  sub(c, t0 + 3.05, N.F2, 1.9, 0.32);
+  // 3.20  red XI answers a fifth up
+  brass(c, t0 + 3.2, [N.A2, N.C4, N.A3], 0.6, 0.18);
+  [3.7, 4.2].forEach((t) => kick(c, t0 + t, 0.7));
+  snare(c, t0 + 4.2, 0.26);
+  sub(c, t0 + 3.25, N.F2, 2.6, 0.32);
 
-  // 3.10  staff — lighter accent
-  brass(c, t0 + 3.1, [N.F2, N.F3], 0.45, 0.12);
+  // 4.70  staff — lighter accent
+  brass(c, t0 + 4.7, [N.F2, N.F3], 0.45, 0.12);
+  kick(c, t0 + 4.7, 0.55);
+  kick(c, t0 + 5.3, 0.5);
 
-  // 4.00-5.20  the two elevens: tension holds, riser starts
-  sub(c, t0 + 4.0, N.A2, 2.2, 0.34);
-  snare(c, t0 + 4.6, 0.22);
-  riser(c, t0 + 4.2, 2.0, 0.16);
+  // 6.10-7.70  the two elevens hold, riser builds
+  sub(c, t0 + 6.1, N.A2, 2.8, 0.34);
+  snare(c, t0 + 6.7, 0.22);
+  riser(c, t0 + 6.5, 2.6, 0.17);
 
-  // 5.20-5.82  they converge: accelerating roll into the collision
-  let roll = t0 + 5.2;
-  let gap = 0.15;
-  while (roll < t0 + 5.8) {
-    snare(c, roll, 0.14 + (roll - t0 - 5.2) * 0.25, 0.08);
-    gap = Math.max(0.045, gap * 0.82);
+  // 6.90-7.68  accelerating roll as they converge
+  let roll = t0 + 6.9;
+  let gap = 0.16;
+  while (roll < t0 + 7.68) {
+    snare(c, roll, 0.14 + (roll - t0 - 6.9) * 0.22, 0.08);
+    gap = Math.max(0.045, gap * 0.83);
     roll += gap;
   }
 
-  // 5.82  COLLISION — 11 + 11 = 22. The hit of the piece.
-  boom(c, t0 + 5.82);
-  kick(c, t0 + 5.82, 1);
-  snare(c, t0 + 5.82, 0.42, 0.3);
-  brass(c, t0 + 5.82, [N.D2, N.A2, N.D3, N.A3], 1.1, 0.24);
-  wash(c, t0 + 5.82, 1.8, 0.18);
-  sub(c, t0 + 5.85, N.D2, 1.6, 0.42);
+  // 7.70  BALL — the two elevens collide into the ball
+  kick(c, t0 + 7.7, 0.85);
+  brass(c, t0 + 7.7, [N.D2, N.A2, N.D3], 0.7, 0.2);
+  wash(c, t0 + 7.7, 1.3, 0.14);
 
-  // 6.40  SHIELD — sustained D5, crowd erupts
-  kick(c, t0 + 6.4, 0.95);
-  brass(c, t0 + 6.4, [N.D2, N.A2, N.D3, N.A3, N.D4], 1.7, 0.22);
-  pad(c, t0 + 6.4, [N.D3, N.A3, N.D4, N.A4], 3.3, 0.13);
-  sub(c, t0 + 6.4, N.D2, 3.1, 0.44);
-  wash(c, t0 + 6.4, 2.8, 0.18);
-  crowd(c, t0 + 6.4, 3.2, 0.15);
+  // 9.62  DETONATION — the ball bursts into 22. The hit of the piece.
+  boom(c, t0 + 9.62);
+  kick(c, t0 + 9.62, 1);
+  snare(c, t0 + 9.62, 0.42, 0.3);
+  brass(c, t0 + 9.62, [N.D2, N.A2, N.D3, N.A3], 1.1, 0.24);
+  wash(c, t0 + 9.62, 1.8, 0.18);
+  sub(c, t0 + 9.65, N.D2, 1.8, 0.42);
 
-  // 7.60  tagline accent, then tail
-  brass(c, t0 + 7.6, [N.F3, N.C4], 0.7, 0.12);
-  kick(c, t0 + 7.6, 0.6);
-  kick(c, t0 + 8.6, 0.45);
+  // 10.60  SHIELD — sustained D5, crowd erupts
+  kick(c, t0 + 10.6, 0.95);
+  brass(c, t0 + 10.6, [N.D2, N.A2, N.D3, N.A3, N.D4], 1.7, 0.22);
+  pad(c, t0 + 10.6, [N.D3, N.A3, N.D4, N.A4], 3.4, 0.13);
+  sub(c, t0 + 10.6, N.D2, 3.2, 0.44);
+  wash(c, t0 + 10.6, 2.8, 0.18);
+  crowd(c, t0 + 10.6, 3.2, 0.15);
+
+  // 12.20  tagline accent, then tail
+  brass(c, t0 + 12.2, [N.F3, N.C4], 0.7, 0.12);
+  kick(c, t0 + 12.2, 0.6);
+  kick(c, t0 + 13.2, 0.45);
 }
 
 /**

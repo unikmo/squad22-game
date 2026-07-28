@@ -2,16 +2,23 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { playScore, canAutoplay } from './introScore';
+import Tutorial from './Tutorial';
 
 /**
  * Squad22 cold open — art-directed to match the printed card back:
  * deep navy (#162638), pitch rendered as blue line art rather than a green
  * field, diagonal hatching and dot grids, real shield logo.
  *
- * Beat sheet:
+ * Beat sheet (slower cut, ~14.7s total):
  *   pitch draws in -> 11 blue cards fly in left, 11 red fly in right ->
  *   3 staff rise on each touchline -> a giant "11" over each half ->
- *   the two elevens collide into "22" -> SQUAD22 shield.
+ *   the two elevens collide into a big ball -> the ball bursts into "22" ->
+ *   SQUAD22 shield -> tagline -> fade.
+ *
+ * After the cold open, a brief explainer screen says what Squad22 is, then
+ * asks the player whether they'd like a quick walkthrough of the rules. If
+ * yes, a card-based Tutorial (see Tutorial.tsx) plays before handing off to
+ * the app; if no, we go straight in.
  *
  * Card selection comes from the deck itself. Cards #1-44 are 11 positions x 4
  * trait colours (position = ceil(n/4)), and #45-56 are the special cards, 3 per
@@ -59,8 +66,27 @@ const LINE_HI = 'rgba(124,188,240,.55)';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
+// A flat, stylised football (one centre pentagon + five around it), drawn in
+// line art so it matches the rest of the cold open instead of an emoji.
+const pentaPts = (cx: number, cy: number, r: number, rotDeg = 0) => {
+  const a0 = ((-90 + rotDeg) * Math.PI) / 180;
+  return Array.from({ length: 5 }, (_, k) => {
+    const a = a0 + (k * 2 * Math.PI) / 5;
+    return `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`;
+  }).join(' ');
+};
+const BALL_R = 108;
+const BALL_PANELS = [0, 1, 2, 3, 4].map((i) => {
+  const ang = -90 + i * 72;
+  const rad = (ang * Math.PI) / 180;
+  return { cx: 66 * Math.cos(rad), cy: 66 * Math.sin(rad), rot: ang + 180 };
+});
+
+type Phase = 'cinematic' | 'explainer' | 'ask' | 'tutorial';
+
 export default function Intro({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
+  const [phase, setPhase] = useState<Phase>('cinematic');
   const [gate, setGate] = useState<'wait' | 'splash' | 'none'>('wait');
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const audio = useRef<AudioContext | null>(null);
@@ -71,16 +97,17 @@ export default function Intro({ onDone }: { onDone: () => void }) {
     const list = timers.current;
     const at = (ms: number, fn: () => void) => { list.push(setTimeout(fn, ms)); };
     if (withSound && audio.current) playScore(audio.current);
-    setStep(1);                       // pitch draws in
-    at(1100, () => setStep(2));       // blue XI
-    at(2100, () => setStep(3));       // red XI
-    at(3100, () => setStep(4));       // staff
-    at(4000, () => setStep(5));       // the two elevens
-    at(5200, () => setStep(6));       // collide
-    at(6400, () => setStep(7));       // shield
-    at(7600, () => setStep(8));       // tagline
-    at(9200, () => setStep(9));       // fade
-    at(9800, () => done.current());
+    setStep(1);                        // pitch draws in
+    at(1700, () => setStep(2));        // blue XI
+    at(3200, () => setStep(3));        // red XI
+    at(4700, () => setStep(4));        // staff
+    at(6100, () => setStep(5));        // the two elevens
+    at(7700, () => setStep(6));        // collide into the ball
+    at(9000, () => setStep(7));        // ball bursts into 22
+    at(10600, () => setStep(8));       // shield
+    at(12200, () => setStep(9));       // tagline
+    at(14000, () => setStep(10));      // fade
+    at(14700, () => setPhase('explainer'));
   }, []);
 
   useEffect(() => {
@@ -142,225 +169,373 @@ export default function Intro({ onDone }: { onDone: () => void }) {
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999, background: '#0e1826',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      opacity: step >= 9 ? 0 : 1, transition: 'opacity .6s ease',
     }}>
-      <style>{`
-        @keyframes flyL   { from { transform: translateX(-760px) scale(.4); opacity: 0; }
-                            to   { transform: translateX(0) scale(1); opacity: 1; } }
-        @keyframes flyR   { from { transform: translateX(760px) scale(.4); opacity: 0; }
-                            to   { transform: translateX(0) scale(1); opacity: 1; } }
-        @keyframes inL    { from { transform: translateX(-140px); opacity: 0; }
-                            to   { transform: translateX(0); opacity: 1; } }
-        @keyframes inR    { from { transform: translateX(140px); opacity: 0; }
-                            to   { transform: translateX(0); opacity: 1; } }
-        @keyframes numIn  { from { transform: scale(2.4); opacity: 0; }
-                            to   { transform: scale(1); opacity: 1; } }
-        @keyframes mergeL { from { transform: translateX(0); opacity: 1; }
-                            80%  { opacity: 1; }
-                            to   { transform: translateX(158px); opacity: 0; } }
-        @keyframes mergeR { from { transform: translateX(0); opacity: 1; }
-                            80%  { opacity: 1; }
-                            to   { transform: translateX(-158px); opacity: 0; } }
-        @keyframes bang   { 0%   { transform: scale(.2); opacity: 0; }
-                            40%  { transform: scale(1.18); opacity: 1; }
-                            100% { transform: scale(1); opacity: 1; } }
-        @keyframes ring   { from { r: 20; opacity: .9; stroke-width: 10; }
-                            to   { r: 460; opacity: 0; stroke-width: 1; } }
-        @keyframes shield { 0%   { transform: scale(2.6); opacity: 0; }
-                            55%  { transform: scale(.95); opacity: 1; }
-                            75%  { transform: scale(1.03); }
-                            100% { transform: scale(1); opacity: 1; } }
-        @keyframes up     { from { transform: translateY(16px); opacity: 0; }
-                            to   { transform: translateY(0); opacity: 1; } }
-        @keyframes draw   { to { stroke-dashoffset: 0; } }
-        @keyframes dim    { to { opacity: .18; } }
-        @keyframes breathe{ 0%,100% { transform: scale(1); opacity: .8; }
-                            50%     { transform: scale(1.12); opacity: 1; } }
-        @keyframes posterIn { from { transform: scale(.86) translateY(18px); opacity: 0; }
-                              to   { transform: scale(1) translateY(0); opacity: 1; } }
+      {phase === 'cinematic' && (
+        <div style={{
+          width: '100%', height: '100%', display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+          opacity: step >= 10 ? 0 : 1, transition: 'opacity .6s ease',
+        }}>
+          <style>{`
+            @keyframes flyL   { from { transform: translateX(-760px) scale(.4); opacity: 0; }
+                                to   { transform: translateX(0) scale(1); opacity: 1; } }
+            @keyframes flyR   { from { transform: translateX(760px) scale(.4); opacity: 0; }
+                                to   { transform: translateX(0) scale(1); opacity: 1; } }
+            @keyframes inL    { from { transform: translateX(-140px); opacity: 0; }
+                                to   { transform: translateX(0); opacity: 1; } }
+            @keyframes inR    { from { transform: translateX(140px); opacity: 0; }
+                                to   { transform: translateX(0); opacity: 1; } }
+            @keyframes numIn  { from { transform: scale(2.4); opacity: 0; }
+                                to   { transform: scale(1); opacity: 1; } }
+            @keyframes mergeL { from { transform: translateX(0); opacity: 1; }
+                                80%  { opacity: 1; }
+                                to   { transform: translateX(158px); opacity: 0; } }
+            @keyframes mergeR { from { transform: translateX(0); opacity: 1; }
+                                80%  { opacity: 1; }
+                                to   { transform: translateX(-158px); opacity: 0; } }
+            @keyframes ballIn  { from { transform: scale(.15) rotate(-140deg); opacity: 0; }
+                                 to   { transform: scale(1) rotate(0deg); opacity: 1; } }
+            @keyframes ballOut { from { transform: scale(1); opacity: 1; }
+                                 to   { transform: scale(.4); opacity: 0; } }
+            @keyframes ballSpin{ from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            @keyframes bang   { 0%   { transform: scale(.2); opacity: 0; }
+                                40%  { transform: scale(1.18); opacity: 1; }
+                                100% { transform: scale(1); opacity: 1; } }
+            @keyframes ring   { from { r: 20; opacity: .9; stroke-width: 10; }
+                                to   { r: 460; opacity: 0; stroke-width: 1; } }
+            @keyframes shield { 0%   { transform: scale(2.6); opacity: 0; }
+                                55%  { transform: scale(.95); opacity: 1; }
+                                75%  { transform: scale(1.03); }
+                                100% { transform: scale(1); opacity: 1; } }
+            @keyframes up     { from { transform: translateY(16px); opacity: 0; }
+                                to   { transform: translateY(0); opacity: 1; } }
+            @keyframes draw   { to { stroke-dashoffset: 0; } }
+            @keyframes dim    { to { opacity: .18; } }
+            @keyframes breathe{ 0%,100% { transform: scale(1); opacity: .8; }
+                                50%     { transform: scale(1.12); opacity: 1; } }
+            @keyframes posterIn { from { transform: scale(.86) translateY(18px); opacity: 0; }
+                                  to   { transform: scale(1) translateY(0); opacity: 1; } }
 
-        .flyl  { animation: flyL .6s cubic-bezier(.16,.9,.3,1.03) backwards; }
-        .flyr  { animation: flyR .6s cubic-bezier(.16,.9,.3,1.03) backwards; }
-        .inl   { animation: inL .55s cubic-bezier(.2,.9,.3,1) backwards; }
-        .inr   { animation: inR .55s cubic-bezier(.2,.9,.3,1) backwards; }
-        .numin { animation: numIn .5s cubic-bezier(.2,.9,.25,1) backwards;
-                 transform-box: fill-box; transform-origin: center; }
-        .mgl   { animation: mergeL .75s cubic-bezier(.6,0,.4,1) forwards;
-                 transform-box: fill-box; transform-origin: center; }
-        .mgr   { animation: mergeR .75s cubic-bezier(.6,0,.4,1) forwards;
-                 transform-box: fill-box; transform-origin: center; }
-        .bang  { animation: bang .55s cubic-bezier(.2,.9,.25,1) .62s backwards;
-                 transform-box: fill-box; transform-origin: center; }
-        .ringx { animation: ring .8s cubic-bezier(.15,.7,.3,1) .6s backwards; }
-        .shield{ animation: shield .95s cubic-bezier(.2,.9,.25,1) both;
-                 transform-box: fill-box; transform-origin: center; }
-        .up    { animation: up .6s ease-out backwards; }
-        .line  { stroke-dasharray: 2600; stroke-dashoffset: 2600;
-                 animation: draw 1.15s ease-out forwards; }
-        .dimmer{ animation: dim .7s ease forwards; }
-      `}</style>
+            .flyl  { animation: flyL .6s cubic-bezier(.16,.9,.3,1.03) backwards; }
+            .flyr  { animation: flyR .6s cubic-bezier(.16,.9,.3,1.03) backwards; }
+            .inl   { animation: inL .55s cubic-bezier(.2,.9,.3,1) backwards; }
+            .inr   { animation: inR .55s cubic-bezier(.2,.9,.3,1) backwards; }
+            .numin { animation: numIn .5s cubic-bezier(.2,.9,.25,1) backwards;
+                     transform-box: fill-box; transform-origin: center; }
+            .mgl   { animation: mergeL 1.05s cubic-bezier(.6,0,.4,1) forwards;
+                     transform-box: fill-box; transform-origin: center; }
+            .mgr   { animation: mergeR 1.05s cubic-bezier(.6,0,.4,1) forwards;
+                     transform-box: fill-box; transform-origin: center; }
+            .ballinwrap  { animation: ballIn .6s cubic-bezier(.2,.9,.25,1) both;
+                     transform-box: fill-box; transform-origin: center; }
+            .balloutwrap { animation: ballOut .5s ease-in forwards;
+                     transform-box: fill-box; transform-origin: center; }
+            .ballspin    { animation: ballSpin 2.6s linear infinite;
+                     transform-box: fill-box; transform-origin: center; }
+            .bang  { animation: bang .55s cubic-bezier(.2,.9,.25,1) .62s backwards;
+                     transform-box: fill-box; transform-origin: center; }
+            .ringx { animation: ring .8s cubic-bezier(.15,.7,.3,1) .6s backwards; }
+            .shield{ animation: shield .95s cubic-bezier(.2,.9,.25,1) both;
+                     transform-box: fill-box; transform-origin: center; }
+            .up    { animation: up .6s ease-out backwards; }
+            .line  { stroke-dasharray: 2600; stroke-dashoffset: 2600;
+                     animation: draw 1.15s ease-out forwards; }
+            .dimmer{ animation: dim .7s ease forwards; }
+          `}</style>
 
-      <svg viewBox={`0 0 ${VW} ${VH}`} style={{ width: '96vw', maxWidth: 1320 }}>
-        <defs>
-          <clipPath id="clipC"><rect x={-CW / 2} y={-CH / 2} width={CW} height={CH} rx="5" /></clipPath>
-          <clipPath id="clipS"><rect x={-SW / 2} y={-SH / 2} width={SW} height={SH} rx="5" /></clipPath>
-          <pattern id="hatch" width="26" height="26" patternUnits="userSpaceOnUse"
-            patternTransform="rotate(-38)">
-            <line x1="0" y1="0" x2="0" y2="26" stroke="rgba(104,168,226,.09)" strokeWidth="3" />
-          </pattern>
-          <pattern id="dots" width="17" height="17" patternUnits="userSpaceOnUse">
-            <circle cx="3" cy="3" r="2.1" fill="rgba(104,168,226,.16)" />
-          </pattern>
-          <radialGradient id="vig" cx="50%" cy="46%">
-            <stop offset="0%" stopColor="#1b2f46" />
-            <stop offset="62%" stopColor="#162638" />
-            <stop offset="100%" stopColor="#0a121c" />
-          </radialGradient>
-          <linearGradient id="flare" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#fff" stopOpacity=".95" />
-            <stop offset="100%" stopColor="#7cbcf0" stopOpacity=".7" />
-          </linearGradient>
-        </defs>
+          <svg viewBox={`0 0 ${VW} ${VH}`} style={{ width: '96vw', maxWidth: 1320 }}>
+            <defs>
+              <clipPath id="clipC"><rect x={-CW / 2} y={-CH / 2} width={CW} height={CH} rx="5" /></clipPath>
+              <clipPath id="clipS"><rect x={-SW / 2} y={-SH / 2} width={SW} height={SH} rx="5" /></clipPath>
+              <pattern id="hatch" width="26" height="26" patternUnits="userSpaceOnUse"
+                patternTransform="rotate(-38)">
+                <line x1="0" y1="0" x2="0" y2="26" stroke="rgba(104,168,226,.09)" strokeWidth="3" />
+              </pattern>
+              <pattern id="dots" width="17" height="17" patternUnits="userSpaceOnUse">
+                <circle cx="3" cy="3" r="2.1" fill="rgba(104,168,226,.16)" />
+              </pattern>
+              <radialGradient id="vig" cx="50%" cy="46%">
+                <stop offset="0%" stopColor="#1b2f46" />
+                <stop offset="62%" stopColor="#162638" />
+                <stop offset="100%" stopColor="#0a121c" />
+              </radialGradient>
+              <linearGradient id="flare" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#fff" stopOpacity=".95" />
+                <stop offset="100%" stopColor="#7cbcf0" stopOpacity=".7" />
+              </linearGradient>
+              <radialGradient id="ballGrad" cx="35%" cy="32%">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="55%" stopColor="#cfe6fb" />
+                <stop offset="100%" stopColor="#7cbcf0" />
+              </radialGradient>
+            </defs>
 
-        {/* backdrop, matching the card back */}
-        <rect width={VW} height={VH} fill="url(#vig)" />
-        <rect width={VW} height={VH} fill="url(#hatch)" />
-        <rect x="0" y="0" width="210" height={VH} fill="url(#dots)" opacity=".5" />
-        <rect x={VW - 210} y="0" width="210" height={VH} fill="url(#dots)" opacity=".5" />
+            {/* backdrop, matching the card back */}
+            <rect width={VW} height={VH} fill="url(#vig)" />
+            <rect width={VW} height={VH} fill="url(#hatch)" />
+            <rect x="0" y="0" width="210" height={VH} fill="url(#dots)" opacity=".5" />
+            <rect x={VW - 210} y="0" width="210" height={VH} fill="url(#dots)" opacity=".5" />
 
-        {/* pitch as line art */}
-        {step >= 1 && (
-          <g className={step >= 7 ? 'dimmer' : undefined}>
-            <rect x={P.x} y={P.y} width={P.w} height={P.h} fill="none"
-              stroke={LINE_HI} strokeWidth="2.5" className="line" />
-            <line x1={CX} y1={P.y} x2={CX} y2={P.y + P.h}
-              stroke={LINE_HI} strokeWidth="2.5" className="line" />
-            <circle cx={CX} cy={CY} r="86" fill="none" stroke={LINE_HI}
-              strokeWidth="2.5" className="line" />
-            <circle cx={CX} cy={CY} r="5" fill={LINE_HI} />
-            <rect x={P.x} y={CY - 150} width="132" height="300" fill="none"
-              stroke={LINE} strokeWidth="2.5" />
-            <rect x={P.x + P.w - 132} y={CY - 150} width="132" height="300" fill="none"
-              stroke={LINE} strokeWidth="2.5" />
-            <rect x={P.x} y={CY - 66} width="56" height="132" fill="none"
-              stroke={LINE} strokeWidth="2" />
-            <rect x={P.x + P.w - 56} y={CY - 66} width="56" height="132" fill="none"
-              stroke={LINE} strokeWidth="2" />
-            <rect x={P.x - 20} y={CY - 46} width="20" height="92" fill="none"
-              stroke={LINE} strokeWidth="2" />
-            <rect x={P.x + P.w} y={CY - 46} width="20" height="92" fill="none"
-              stroke={LINE} strokeWidth="2" />
-          </g>
-        )}
+            {/* pitch as line art */}
+            {step >= 1 && (
+              <g className={step >= 8 ? 'dimmer' : undefined}>
+                <rect x={P.x} y={P.y} width={P.w} height={P.h} fill="none"
+                  stroke={LINE_HI} strokeWidth="2.5" className="line" />
+                <line x1={CX} y1={P.y} x2={CX} y2={P.y + P.h}
+                  stroke={LINE_HI} strokeWidth="2.5" className="line" />
+                <circle cx={CX} cy={CY} r="86" fill="none" stroke={LINE_HI}
+                  strokeWidth="2.5" className="line" />
+                <circle cx={CX} cy={CY} r="5" fill={LINE_HI} />
+                <rect x={P.x} y={CY - 150} width="132" height="300" fill="none"
+                  stroke={LINE} strokeWidth="2.5" />
+                <rect x={P.x + P.w - 132} y={CY - 150} width="132" height="300" fill="none"
+                  stroke={LINE} strokeWidth="2.5" />
+                <rect x={P.x} y={CY - 66} width="56" height="132" fill="none"
+                  stroke={LINE} strokeWidth="2" />
+                <rect x={P.x + P.w - 56} y={CY - 66} width="56" height="132" fill="none"
+                  stroke={LINE} strokeWidth="2" />
+                <rect x={P.x - 20} y={CY - 46} width="20" height="92" fill="none"
+                  stroke={LINE} strokeWidth="2" />
+                <rect x={P.x + P.w} y={CY - 46} width="20" height="92" fill="none"
+                  stroke={LINE} strokeWidth="2" />
+              </g>
+            )}
 
-        <g className={step >= 7 ? 'dimmer' : undefined}>
-          {step >= 2 && HOME.map((p, i) => card(p.card, p.x, p.y, CW, CH, TEAM_B, 'flyl', i * 58))}
-          {step >= 3 && AWAY.map((p, i) => card(p.card, p.x, p.y, CW, CH, TEAM_R, 'flyr', i * 58))}
+            <g className={step >= 8 ? 'dimmer' : undefined}>
+              {step >= 2 && HOME.map((p, i) => card(p.card, p.x, p.y, CW, CH, TEAM_B, 'flyl', i * 58))}
+              {step >= 3 && AWAY.map((p, i) => card(p.card, p.x, p.y, CW, CH, TEAM_R, 'flyr', i * 58))}
 
-          {/* staff — a column on each touchline */}
-          {step >= 4 && (
-            <>
-              {BLUE_STAFF.map((n, i) => card(n, 78, CY - 100 + i * 100, SW, SH, TEAM_B, 'inl', i * 90))}
-              {RED_STAFF.map((n, i) => card(n, VW - 78, CY - 100 + i * 100, SW, SH, TEAM_R, 'inr', i * 90))}
-              <text x="78" y={CY + 168} textAnchor="middle" fontSize="12" fontWeight="800"
-                fill={TEAM_B} letterSpacing="2.5" className="inl">STAFF</text>
-              <text x={VW - 78} y={CY + 168} textAnchor="middle" fontSize="12" fontWeight="800"
-                fill={TEAM_R} letterSpacing="2.5" className="inr">STAFF</text>
-            </>
-          )}
-        </g>
-
-        {/* 11 + 11 */}
-        {step >= 5 && step < 7 && (
-          <g>
-            <rect width={VW} height={VH} fill="rgba(10,18,28,.62)" className="up" />
-            <g className={step >= 6 ? 'mgl' : 'numin'}>
-              <text x={CX - 210} y={CY + 46} textAnchor="middle" fontSize="164"
-                fontWeight="900" fill="url(#flare)" letterSpacing="-4">11</text>
-              <text x={CX - 210} y={CY + 96} textAnchor="middle" fontSize="15"
-                fontWeight="800" fill={TEAM_B} letterSpacing="6">PLAYERS</text>
+              {/* staff — a column on each touchline */}
+              {step >= 4 && (
+                <>
+                  {BLUE_STAFF.map((n, i) => card(n, 78, CY - 100 + i * 100, SW, SH, TEAM_B, 'inl', i * 90))}
+                  {RED_STAFF.map((n, i) => card(n, VW - 78, CY - 100 + i * 100, SW, SH, TEAM_R, 'inr', i * 90))}
+                  <text x="78" y={CY + 168} textAnchor="middle" fontSize="12" fontWeight="800"
+                    fill={TEAM_B} letterSpacing="2.5" className="inl">STAFF</text>
+                  <text x={VW - 78} y={CY + 168} textAnchor="middle" fontSize="12" fontWeight="800"
+                    fill={TEAM_R} letterSpacing="2.5" className="inr">STAFF</text>
+                </>
+              )}
             </g>
-            <g className={step >= 6 ? 'mgr' : 'numin'} style={{ animationDelay: step >= 6 ? '0ms' : '140ms' }}>
-              <text x={CX + 210} y={CY + 46} textAnchor="middle" fontSize="164"
-                fontWeight="900" fill="url(#flare)" letterSpacing="-4">11</text>
-              <text x={CX + 210} y={CY + 96} textAnchor="middle" fontSize="15"
-                fontWeight="800" fill={TEAM_R} letterSpacing="6">PLAYERS</text>
-            </g>
-            {step >= 6 && (
-              <>
-                <circle className="ringx" cx={CX} cy={CY} r="20" fill="none" stroke="#9fd2ff" />
-                <g className="bang">
-                  <text x={CX} y={CY + 52} textAnchor="middle" fontSize="212"
-                    fontWeight="900" fill="url(#flare)" letterSpacing="-6">22</text>
-                  <text x={CX} y={CY + 108} textAnchor="middle" fontSize="16"
-                    fontWeight="800" fill="#9fd2ff" letterSpacing="8">ONE SQUAD</text>
+
+            {/* 11 + 11 -> ball -> 22 */}
+            {step >= 5 && step < 8 && (
+              <g>
+                <rect width={VW} height={VH} fill="rgba(10,18,28,.62)" className="up" />
+                <g className={step >= 6 ? 'mgl' : 'numin'}>
+                  <text x={CX - 210} y={CY + 46} textAnchor="middle" fontSize="164"
+                    fontWeight="900" fill="url(#flare)" letterSpacing="-4">11</text>
+                  <text x={CX - 210} y={CY + 96} textAnchor="middle" fontSize="15"
+                    fontWeight="800" fill={TEAM_B} letterSpacing="6">PLAYERS</text>
                 </g>
+                <g className={step >= 6 ? 'mgr' : 'numin'} style={{ animationDelay: step >= 6 ? '0ms' : '140ms' }}>
+                  <text x={CX + 210} y={CY + 46} textAnchor="middle" fontSize="164"
+                    fontWeight="900" fill="url(#flare)" letterSpacing="-4">11</text>
+                  <text x={CX + 210} y={CY + 96} textAnchor="middle" fontSize="15"
+                    fontWeight="800" fill={TEAM_R} letterSpacing="6">PLAYERS</text>
+                </g>
+
+                {/* the big ball, born from the collision */}
+                {step >= 6 && (
+                  <g transform={`translate(${CX},${CY})`}
+                    className={step >= 7 ? 'balloutwrap' : 'ballinwrap'}>
+                    <g className="ballspin">
+                      <circle r={BALL_R} fill="url(#ballGrad)" stroke="#0e1826" strokeWidth="4" />
+                      <polygon points={pentaPts(0, 0, 34, 0)} fill="#0e1826" opacity=".92" />
+                      {BALL_PANELS.map((b, i) => (
+                        <polygon key={i} points={pentaPts(b.cx, b.cy, 30, b.rot)}
+                          fill="#0e1826" opacity=".88" />
+                      ))}
+                    </g>
+                  </g>
+                )}
+
+                {step >= 7 && (
+                  <>
+                    <circle className="ringx" cx={CX} cy={CY} r="20" fill="none" stroke="#9fd2ff" />
+                    <g className="bang">
+                      <text x={CX} y={CY + 52} textAnchor="middle" fontSize="212"
+                        fontWeight="900" fill="url(#flare)" letterSpacing="-6">22</text>
+                      <text x={CX} y={CY + 108} textAnchor="middle" fontSize="16"
+                        fontWeight="800" fill="#9fd2ff" letterSpacing="8">ONE SQUAD</text>
+                    </g>
+                  </>
+                )}
+              </g>
+            )}
+
+            {/* shield */}
+            {step >= 8 && (
+              <>
+                <rect width={VW} height={VH} fill="rgba(9,16,26,.82)" className="up" />
+                <g className="shield">
+                  <image href="/images/logo.webp" x={CX - 210} y={CY - 232} width="420" height="414"
+                    preserveAspectRatio="xMidYMid meet" />
+                </g>
+                {step >= 9 && (
+                  <text x={CX} y={CY + 236} textAnchor="middle" fontSize="17" fontWeight="800"
+                    fill="rgba(190,220,250,.85)" letterSpacing="9" className="up">
+                    22 PLAYERS · 3 STAFF · ONE SQUAD
+                  </text>
+                )}
               </>
             )}
-          </g>
-        )}
+          </svg>
 
-        {/* shield */}
-        {step >= 7 && (
-          <>
-            <rect width={VW} height={VH} fill="rgba(9,16,26,.82)" className="up" />
-            <g className="shield">
-              <image href="/images/logo.webp" x={CX - 210} y={CY - 232} width="420" height="414"
-                preserveAspectRatio="xMidYMid meet" />
-            </g>
-            {step >= 8 && (
-              <text x={CX} y={CY + 236} textAnchor="middle" fontSize="17" fontWeight="800"
-                fill="rgba(190,220,250,.85)" letterSpacing="9" className="up">
-                22 PLAYERS · 3 STAFF · ONE SQUAD
-              </text>
-            )}
-          </>
-        )}
-      </svg>
+          {/* poster, only when the browser refuses audio */}
+          {gate === 'splash' && (
+            <div onClick={start} style={{
+              position: 'absolute', inset: 0, cursor: 'pointer', background: '#0e1826',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 36,
+            }}>
+              <div style={{
+                position: 'absolute', width: 640, height: 640, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(80,160,230,.18) 0%, transparent 68%)',
+                animation: 'breathe 3.6s ease-in-out infinite',
+              }} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/logo.webp" alt="Squad22" style={{
+                width: 'min(46vw, 400px)', position: 'relative',
+                filter: 'drop-shadow(0 26px 64px rgba(0,0,0,.8))',
+                animation: 'posterIn .9s cubic-bezier(.2,.9,.25,1) both',
+              }} />
+              <button onClick={start} aria-label="Play" style={{
+                position: 'relative', width: 92, height: 92, borderRadius: '50%',
+                border: '2px solid rgba(255,255,255,.85)', background: 'rgba(61,155,224,.2)',
+                backdropFilter: 'blur(6px)', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 0 54px rgba(61,155,224,.55)',
+                animation: 'posterIn .9s cubic-bezier(.2,.9,.25,1) .18s both',
+              }}>
+                <svg width="30" height="34" viewBox="0 0 30 34">
+                  <path d="M3 2 L28 17 L3 32 Z" fill="#fff" />
+                </svg>
+              </button>
+            </div>
+          )}
 
-      {/* poster, only when the browser refuses audio */}
-      {gate === 'splash' && (
-        <div onClick={start} style={{
-          position: 'absolute', inset: 0, cursor: 'pointer', background: '#0e1826',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: 36,
-        }}>
-          <div style={{
-            position: 'absolute', width: 640, height: 640, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(80,160,230,.18) 0%, transparent 68%)',
-            animation: 'breathe 3.6s ease-in-out infinite',
-          }} />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo.webp" alt="Squad22" style={{
-            width: 'min(46vw, 400px)', position: 'relative',
-            filter: 'drop-shadow(0 26px 64px rgba(0,0,0,.8))',
-            animation: 'posterIn .9s cubic-bezier(.2,.9,.25,1) both',
-          }} />
-          <button onClick={start} aria-label="Play" style={{
-            position: 'relative', width: 92, height: 92, borderRadius: '50%',
-            border: '2px solid rgba(255,255,255,.85)', background: 'rgba(61,155,224,.2)',
-            backdropFilter: 'blur(6px)', cursor: 'pointer', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 54px rgba(61,155,224,.55)',
-            animation: 'posterIn .9s cubic-bezier(.2,.9,.25,1) .18s both',
-          }}>
-            <svg width="30" height="34" viewBox="0 0 30 34">
-              <path d="M3 2 L28 17 L3 32 Z" fill="#fff" />
-            </svg>
-          </button>
+          {gate === 'none' && step > 0 && step < 10 && (
+            <button onClick={skip} style={{
+              position: 'absolute', right: 24, bottom: 24, padding: '9px 20px', fontSize: 13,
+              fontWeight: 700, letterSpacing: 1, color: 'rgba(190,220,250,.7)',
+              background: 'rgba(104,168,226,.1)', border: '1px solid rgba(104,168,226,.3)',
+              borderRadius: 999, cursor: 'pointer',
+            }}>
+              Skip ›
+            </button>
+          )}
         </div>
       )}
 
-      {gate === 'none' && step > 0 && step < 9 && (
-        <button onClick={skip} style={{
-          position: 'absolute', right: 24, bottom: 24, padding: '9px 20px', fontSize: 13,
-          fontWeight: 700, letterSpacing: 1, color: 'rgba(190,220,250,.7)',
-          background: 'rgba(104,168,226,.1)', border: '1px solid rgba(104,168,226,.3)',
-          borderRadius: 999, cursor: 'pointer',
-        }}>
-          Skip ›
-        </button>
+      {phase === 'explainer' && <Explainer onContinue={() => setPhase('ask')} />}
+      {phase === 'ask' && (
+        <Ask onYes={() => setPhase('tutorial')} onNo={() => done.current()} />
       )}
+      {phase === 'tutorial' && <Tutorial onDone={() => done.current()} />}
+    </div>
+  );
+}
+
+// ---- post cold-open screens ------------------------------------------------
+
+const fadeInUp = `
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); }
+                        to   { opacity: 1; transform: translateY(0); } }
+  .fiu { animation: fadeInUp .6s cubic-bezier(.2,.9,.25,1) both; }
+`;
+
+function Explainer({ onContinue }: { onContinue: () => void }) {
+  const chips = [
+    { emoji: '🧤', label: 'Goalkeeper' },
+    { emoji: '🛡️', label: 'Defenders' },
+    { emoji: '🎯', label: 'Midfielders' },
+    { emoji: '⚡', label: 'Strikers' },
+  ];
+  return (
+    <div style={{
+      width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+      padding: '40px 24px', gap: 22,
+    }}>
+      <style>{fadeInUp}</style>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/images/logo-sm.webp" alt="Squad22" className="fiu"
+        style={{ width: 72, opacity: 0.95 }} />
+      <h2 className="fiu" style={{
+        color: '#eaf3fc', fontSize: 34, fontWeight: 900, margin: 0,
+        animationDelay: '80ms',
+      }}>
+        What is Squad22?
+      </h2>
+      <p className="fiu" style={{
+        color: 'rgba(210,228,248,.85)', fontSize: 17, lineHeight: 1.7,
+        maxWidth: 560, margin: 0, animationDelay: '160ms',
+      }}>
+        A strategic card game where you become a football manager. Build your
+        perfect squad by playing player cards to earn points — first to{' '}
+        <strong style={{ color: '#3d9be0' }}>300</strong> wins.
+      </p>
+      <div className="fiu" style={{
+        display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
+        maxWidth: 520, animationDelay: '240ms',
+      }}>
+        {chips.map((c) => (
+          <div key={c.label} style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: 'rgba(61,155,224,.12)', border: '1px solid rgba(61,155,224,.35)',
+            borderRadius: 999, padding: '8px 16px', color: '#cfe4fb', fontSize: 14,
+          }}>
+            <span style={{ fontSize: 18 }}>{c.emoji}</span>{c.label}
+          </div>
+        ))}
+      </div>
+      <button onClick={onContinue} className="fiu" style={{
+        marginTop: 8, padding: '14px 40px', fontSize: 15, fontWeight: 800,
+        letterSpacing: 1, textTransform: 'uppercase', color: '#000',
+        background: '#3d9be0', border: 'none', borderRadius: 999, cursor: 'pointer',
+        boxShadow: '0 0 30px rgba(61,155,224,.45)', animationDelay: '320ms',
+      }}>
+        Continue
+      </button>
+    </div>
+  );
+}
+
+function Ask({ onYes, onNo }: { onYes: () => void; onNo: () => void }) {
+  return (
+    <div style={{
+      width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+      padding: '40px 24px', gap: 18,
+    }}>
+      <style>{fadeInUp}</style>
+      <h2 className="fiu" style={{ color: '#eaf3fc', fontSize: 30, fontWeight: 900, margin: 0 }}>
+        New to Squad22?
+      </h2>
+      <p className="fiu" style={{
+        color: 'rgba(210,228,248,.85)', fontSize: 16, maxWidth: 480, margin: 0,
+        animationDelay: '80ms',
+      }}>
+        Want a quick walkthrough of how position pairs and trait triples work?
+      </p>
+      <div className="fiu" style={{ display: 'flex', gap: 16, marginTop: 10, animationDelay: '160ms' }}>
+        <button onClick={onYes} style={{
+          padding: '14px 34px', fontSize: 15, fontWeight: 800, letterSpacing: 1,
+          textTransform: 'uppercase', color: '#000', background: '#3d9be0',
+          border: 'none', borderRadius: 999, cursor: 'pointer',
+          boxShadow: '0 0 30px rgba(61,155,224,.45)',
+        }}>
+          Yes, show me
+        </button>
+        <button onClick={onNo} style={{
+          padding: '14px 34px', fontSize: 15, fontWeight: 800, letterSpacing: 1,
+          textTransform: 'uppercase', color: '#cfe4fb', background: 'transparent',
+          border: '2px solid rgba(61,155,224,.5)', borderRadius: 999, cursor: 'pointer',
+        }}>
+          No, I know it
+        </button>
+      </div>
     </div>
   );
 }
