@@ -464,65 +464,79 @@ const PITCH_BG: React.CSSProperties = {
 function Explainer({ onRules }: { onRules: () => void }) {
   return (
     <div style={{
-      width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', textAlign: 'center',
-      padding: '32px 24px', gap: 18, overflowY: 'auto', ...PITCH_BG,
+      width: '100%', height: '100%', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', padding: '40px 32px', overflowY: 'auto', ...PITCH_BG,
     }}>
       <style>{fadeInUp}</style>
 
-      {/* the printed card back (portrait, 640x896) laid on its side so the goal
-          boxes read left/right — the box is the rotated bounding box (width and
-          height swapped from the source image), the <img> keeps the source's
-          own aspect ratio and rotates 90deg inside it. */}
-      <div className="fiu" style={{
-        width: 264, height: 189, position: 'relative', margin: '0 auto',
-        borderRadius: 14, overflow: 'hidden', display: 'flex',
-        alignItems: 'center', justifyContent: 'center',
-        boxShadow: '0 18px 46px rgba(0,0,0,.55)', border: '1px solid rgba(124,188,240,.35)',
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center',
+        gap: 44, maxWidth: 760, margin: '0 auto',
       }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/card-back.webp" alt="" style={{
-          width: 189, height: 264, transform: 'rotate(90deg)', objectFit: 'cover',
-        }} />
+        {/* the printed card back, upright — its own art already reads as a
+            landscape pitch with the goal boxes left/right, so no rotation. */}
+        <div className="fiu" style={{
+          flex: '0 0 auto', width: 216, height: 302, borderRadius: 16,
+          padding: 6, background: '#eef3f8',
+          boxShadow: '0 22px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(124,188,240,.25)',
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/card-back.webp"
+            alt="Squad22 card back — shield crest on a navy pitch"
+            style={{ width: '100%', height: '100%', borderRadius: 11, objectFit: 'cover', display: 'block' }}
+          />
+        </div>
+
+        {/* copy */}
+        <div style={{ flex: '1 1 320px', minWidth: 280, textAlign: 'left' }}>
+          <div className="fiu" style={{
+            fontSize: 12, fontWeight: 800, letterSpacing: 3, textTransform: 'uppercase',
+            color: '#5ea6e0', marginBottom: 10,
+          }}>
+            Squad22 · Football Strategy Card Game
+          </div>
+
+          <h2 className="fiu" style={{
+            color: '#f4f8fc', fontSize: 36, fontWeight: 800, margin: '0 0 16px',
+            letterSpacing: '-0.5px', lineHeight: 1.15, animationDelay: '70ms',
+            fontFamily: 'Georgia, "Times New Roman", serif',
+          }}>
+            This is Squad22.
+          </h2>
+
+          <div className="fiu" style={{
+            color: 'rgba(214,228,245,.86)', fontSize: 15.5, lineHeight: 1.75,
+            margin: 0, animationDelay: '140ms', display: 'flex',
+            flexDirection: 'column', gap: 12,
+          }}>
+            <p style={{ margin: 0 }}>
+              Every card matters, every decision carries risk, and the perfect
+              squad is never guaranteed.
+            </p>
+            <p style={{ margin: 0 }}>
+              Build formations. Combine positions. Watch the Open Pile.
+              Outsmart your rivals.
+            </p>
+            <p style={{ margin: 0 }}>
+              Easy to begin. Different every time. Deeper than it first appears.
+            </p>
+            <p style={{ margin: '4px 0 0', color: '#f4f8fc', fontWeight: 700, fontSize: 16.5 }}>
+              Can you build the winning squad?
+            </p>
+          </div>
+
+          <button onClick={onRules} className="fiu" style={{
+            marginTop: 24, padding: '13px 42px', fontSize: 13, fontWeight: 800,
+            letterSpacing: 2.5, textTransform: 'uppercase', color: '#f4f8fc',
+            background: 'linear-gradient(135deg, #2f7ec2, #1f3a56)',
+            border: '1px solid rgba(159,210,255,.55)', borderRadius: 999, cursor: 'pointer',
+            boxShadow: '0 8px 26px rgba(61,155,224,.35)', animationDelay: '220ms',
+          }}>
+            Rules
+          </button>
+        </div>
       </div>
-
-      <h2 className="fiu" style={{
-        color: '#eaf3fc', fontSize: 32, fontWeight: 900, margin: 0,
-        animationDelay: '80ms',
-      }}>
-        This is Squad22.
-      </h2>
-
-      <div className="fiu" style={{
-        color: 'rgba(210,228,248,.88)', fontSize: 15.5, lineHeight: 1.75,
-        maxWidth: 540, margin: 0, animationDelay: '160ms', display: 'flex',
-        flexDirection: 'column', gap: 10,
-      }}>
-        <p style={{ margin: 0 }}>
-          A football strategy card game where every card matters, every decision
-          carries risk, and the perfect squad is never guaranteed.
-        </p>
-        <p style={{ margin: 0 }}>
-          Build formations. Combine positions. Watch the Open Pile. Outsmart
-          your rivals.
-        </p>
-        <p style={{ margin: 0 }}>
-          Easy to begin. Different every time. Deeper than it first appears.
-        </p>
-        <p style={{ margin: 0, color: '#eaf3fc', fontWeight: 700 }}>
-          Can you build the winning squad?
-        </p>
-      </div>
-
-      <button onClick={onRules} className="fiu" style={{
-        marginTop: 6, padding: '14px 46px', fontSize: 14, fontWeight: 800,
-        letterSpacing: 2, textTransform: 'uppercase', color: '#eaf3fc',
-        background: 'linear-gradient(135deg, #2f7ec2, #1f3a56)',
-        border: '1px solid rgba(159,210,255,.55)', borderRadius: 999, cursor: 'pointer',
-        boxShadow: '0 8px 26px rgba(61,155,224,.35)', animationDelay: '260ms',
-      }}>
-        Rules
-      </button>
     </div>
   );
 }
