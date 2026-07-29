@@ -15,10 +15,11 @@ import Tutorial from './Tutorial';
  *   the two elevens collide into a big ball -> the ball bursts into "22" ->
  *   SQUAD22 shield -> tagline -> fade.
  *
- * After the cold open, a brief explainer screen says what Squad22 is, then
- * asks the player whether they'd like a quick walkthrough of the rules. If
- * yes, a card-based Tutorial (see Tutorial.tsx) plays before handing off to
- * the app; if no, we go straight in.
+ * After the cold open, a brief explainer screen ("This is Squad22.") sets up
+ * the game over the card back, laid horizontally. Its "Rules" button leads
+ * into a card-based Tutorial (see Tutorial.tsx) — shuffle, deal, draw, pair,
+ * triple, discard & win — which can be skipped at any point for players who
+ * already know the game.
  *
  * Card selection comes from the deck itself. Cards #1-44 are 11 positions x 4
  * trait colours (position = ceil(n/4)), and #45-56 are the special cards, 3 per
@@ -75,14 +76,14 @@ const pentaPts = (cx: number, cy: number, r: number, rotDeg = 0) => {
     return `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`;
   }).join(' ');
 };
-const BALL_R = 108;
+const BALL_R = 132;
 const BALL_PANELS = [0, 1, 2, 3, 4].map((i) => {
   const ang = -90 + i * 72;
   const rad = (ang * Math.PI) / 180;
-  return { cx: 66 * Math.cos(rad), cy: 66 * Math.sin(rad), rot: ang + 180 };
+  return { cx: 80 * Math.cos(rad), cy: 80 * Math.sin(rad), rot: ang + 180 };
 });
 
-type Phase = 'cinematic' | 'explainer' | 'ask' | 'tutorial';
+type Phase = 'cinematic' | 'explainer' | 'tutorial';
 
 export default function Intro({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
@@ -335,17 +336,24 @@ export default function Intro({ onDone }: { onDone: () => void }) {
                     fontWeight="800" fill={TEAM_R} letterSpacing="6">PLAYERS</text>
                 </g>
 
-                {/* the big ball, born from the collision */}
+                {/* the big ball, born from the collision. Note: no transform="translate(...)"
+                    attribute here — an animated CSS `transform` on the same element silently
+                    replaces any presentation-attribute transform, which is what sent this to
+                    the top-left corner before. Everything below uses absolute CX/CY instead. */}
                 {step >= 6 && (
-                  <g transform={`translate(${CX},${CY})`}
-                    className={step >= 7 ? 'balloutwrap' : 'ballinwrap'}>
+                  <g className={step >= 7 ? 'balloutwrap' : 'ballinwrap'}>
                     <g className="ballspin">
-                      <circle r={BALL_R} fill="url(#ballGrad)" stroke="#0e1826" strokeWidth="4" />
-                      <polygon points={pentaPts(0, 0, 34, 0)} fill="#0e1826" opacity=".92" />
+                      <circle cx={CX} cy={CY} r={BALL_R} fill="url(#ballGrad)"
+                        stroke="#0e1826" strokeWidth="4" />
+                      <polygon points={pentaPts(CX, CY, 38, 0)} fill="#0e1826" opacity=".92" />
                       {BALL_PANELS.map((b, i) => (
-                        <polygon key={i} points={pentaPts(b.cx, b.cy, 30, b.rot)}
+                        <polygon key={i} points={pentaPts(CX + b.cx, CY + b.cy, 33, b.rot)}
                           fill="#0e1826" opacity=".88" />
                       ))}
+                      {/* squad22 mark, sitting in a white gap between the panels */}
+                      <image href="/images/logo-mono.webp"
+                        x={CX - 22} y={CY - BALL_R + 6} width="44" height="44"
+                        opacity=".95" />
                     </g>
                   </g>
                 )}
@@ -428,10 +436,7 @@ export default function Intro({ onDone }: { onDone: () => void }) {
         </div>
       )}
 
-      {phase === 'explainer' && <Explainer onContinue={() => setPhase('ask')} />}
-      {phase === 'ask' && (
-        <Ask onYes={() => setPhase('tutorial')} onNo={() => done.current()} />
-      )}
+      {phase === 'explainer' && <Explainer onRules={() => setPhase('tutorial')} />}
       {phase === 'tutorial' && <Tutorial onDone={() => done.current()} />}
     </div>
   );
@@ -445,97 +450,79 @@ const fadeInUp = `
   .fiu { animation: fadeInUp .6s cubic-bezier(.2,.9,.25,1) both; }
 `;
 
-function Explainer({ onContinue }: { onContinue: () => void }) {
-  const chips = [
-    { emoji: '🧤', label: 'Goalkeeper' },
-    { emoji: '🛡️', label: 'Defenders' },
-    { emoji: '🎯', label: 'Midfielders' },
-    { emoji: '⚡', label: 'Strikers' },
-  ];
-  return (
-    <div style={{
-      width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', textAlign: 'center',
-      padding: '40px 24px', gap: 22,
-    }}>
-      <style>{fadeInUp}</style>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/images/logo-sm.webp" alt="Squad22" className="fiu"
-        style={{ width: 72, opacity: 0.95 }} />
-      <h2 className="fiu" style={{
-        color: '#eaf3fc', fontSize: 34, fontWeight: 900, margin: 0,
-        animationDelay: '80ms',
-      }}>
-        What is Squad22?
-      </h2>
-      <p className="fiu" style={{
-        color: 'rgba(210,228,248,.85)', fontSize: 17, lineHeight: 1.7,
-        maxWidth: 560, margin: 0, animationDelay: '160ms',
-      }}>
-        A strategic card game where you become a football manager. Build your
-        perfect squad by playing player cards to earn points — first to{' '}
-        <strong style={{ color: '#3d9be0' }}>300</strong> wins.
-      </p>
-      <div className="fiu" style={{
-        display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
-        maxWidth: 520, animationDelay: '240ms',
-      }}>
-        {chips.map((c) => (
-          <div key={c.label} style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: 'rgba(61,155,224,.12)', border: '1px solid rgba(61,155,224,.35)',
-            borderRadius: 999, padding: '8px 16px', color: '#cfe4fb', fontSize: 14,
-          }}>
-            <span style={{ fontSize: 18 }}>{c.emoji}</span>{c.label}
-          </div>
-        ))}
-      </div>
-      <button onClick={onContinue} className="fiu" style={{
-        marginTop: 8, padding: '14px 40px', fontSize: 15, fontWeight: 800,
-        letterSpacing: 1, textTransform: 'uppercase', color: '#000',
-        background: '#3d9be0', border: 'none', borderRadius: 999, cursor: 'pointer',
-        boxShadow: '0 0 30px rgba(61,155,224,.45)', animationDelay: '320ms',
-      }}>
-        Continue
-      </button>
-    </div>
-  );
-}
+// Same navy hatch + dot texture as the cold open, as a plain CSS background so
+// the football/card-back motif carries through every screen after it too.
+const PITCH_BG: React.CSSProperties = {
+  backgroundColor: '#0e1826',
+  backgroundImage: `
+    repeating-linear-gradient(-38deg, rgba(104,168,226,.07) 0 3px, transparent 3px 26px),
+    radial-gradient(circle, rgba(104,168,226,.14) 1.4px, transparent 1.6px)
+  `,
+  backgroundSize: 'auto, 17px 17px',
+};
 
-function Ask({ onYes, onNo }: { onYes: () => void; onNo: () => void }) {
+function Explainer({ onRules }: { onRules: () => void }) {
   return (
     <div style={{
       width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', textAlign: 'center',
-      padding: '40px 24px', gap: 18,
+      padding: '32px 24px', gap: 18, overflowY: 'auto', ...PITCH_BG,
     }}>
       <style>{fadeInUp}</style>
-      <h2 className="fiu" style={{ color: '#eaf3fc', fontSize: 30, fontWeight: 900, margin: 0 }}>
-        New to Squad22?
-      </h2>
-      <p className="fiu" style={{
-        color: 'rgba(210,228,248,.85)', fontSize: 16, maxWidth: 480, margin: 0,
+
+      {/* the printed card back (portrait, 640x896) laid on its side so the goal
+          boxes read left/right — the box is the rotated bounding box (width and
+          height swapped from the source image), the <img> keeps the source's
+          own aspect ratio and rotates 90deg inside it. */}
+      <div className="fiu" style={{
+        width: 264, height: 189, position: 'relative', margin: '0 auto',
+        borderRadius: 14, overflow: 'hidden', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 18px 46px rgba(0,0,0,.55)', border: '1px solid rgba(124,188,240,.35)',
+      }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/card-back.webp" alt="" style={{
+          width: 189, height: 264, transform: 'rotate(90deg)', objectFit: 'cover',
+        }} />
+      </div>
+
+      <h2 className="fiu" style={{
+        color: '#eaf3fc', fontSize: 32, fontWeight: 900, margin: 0,
         animationDelay: '80ms',
       }}>
-        Want a quick walkthrough of how position pairs and trait triples work?
-      </p>
-      <div className="fiu" style={{ display: 'flex', gap: 16, marginTop: 10, animationDelay: '160ms' }}>
-        <button onClick={onYes} style={{
-          padding: '14px 34px', fontSize: 15, fontWeight: 800, letterSpacing: 1,
-          textTransform: 'uppercase', color: '#000', background: '#3d9be0',
-          border: 'none', borderRadius: 999, cursor: 'pointer',
-          boxShadow: '0 0 30px rgba(61,155,224,.45)',
-        }}>
-          Yes, show me
-        </button>
-        <button onClick={onNo} style={{
-          padding: '14px 34px', fontSize: 15, fontWeight: 800, letterSpacing: 1,
-          textTransform: 'uppercase', color: '#cfe4fb', background: 'transparent',
-          border: '2px solid rgba(61,155,224,.5)', borderRadius: 999, cursor: 'pointer',
-        }}>
-          No, I know it
-        </button>
+        This is Squad22.
+      </h2>
+
+      <div className="fiu" style={{
+        color: 'rgba(210,228,248,.88)', fontSize: 15.5, lineHeight: 1.75,
+        maxWidth: 540, margin: 0, animationDelay: '160ms', display: 'flex',
+        flexDirection: 'column', gap: 10,
+      }}>
+        <p style={{ margin: 0 }}>
+          A football strategy card game where every card matters, every decision
+          carries risk, and the perfect squad is never guaranteed.
+        </p>
+        <p style={{ margin: 0 }}>
+          Build formations. Combine positions. Watch the Open Pile. Outsmart
+          your rivals.
+        </p>
+        <p style={{ margin: 0 }}>
+          Easy to begin. Different every time. Deeper than it first appears.
+        </p>
+        <p style={{ margin: 0, color: '#eaf3fc', fontWeight: 700 }}>
+          Can you build the winning squad?
+        </p>
       </div>
+
+      <button onClick={onRules} className="fiu" style={{
+        marginTop: 6, padding: '14px 46px', fontSize: 14, fontWeight: 800,
+        letterSpacing: 2, textTransform: 'uppercase', color: '#eaf3fc',
+        background: 'linear-gradient(135deg, #2f7ec2, #1f3a56)',
+        border: '1px solid rgba(159,210,255,.55)', borderRadius: 999, cursor: 'pointer',
+        boxShadow: '0 8px 26px rgba(61,155,224,.35)', animationDelay: '260ms',
+      }}>
+        Rules
+      </button>
     </div>
   );
 }
