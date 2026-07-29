@@ -280,12 +280,20 @@ export default function Intro({ onDone }: { onDone: () => void }) {
             {/* pitch as line art */}
             {step >= 1 && (
               <g className={step >= 8 ? 'dimmer' : undefined}>
+                {/* Each shape needs its own stroke-dasharray matching its real
+                    perimeter — they'd shared one hardcoded value (2600) before,
+                    which was shorter than the outer rect's actual perimeter
+                    (2 * (880+520) = 2800), leaving a permanent ~200-unit gap
+                    in the border near its start/end point (top-left area). */}
                 <rect x={P.x} y={P.y} width={P.w} height={P.h} fill="none"
-                  stroke={LINE_HI} strokeWidth="2.5" className="line" />
+                  stroke={LINE_HI} strokeWidth="2.5" className="line"
+                  style={{ strokeDasharray: 2800, strokeDashoffset: 2800 }} />
                 <line x1={CX} y1={P.y} x2={CX} y2={P.y + P.h}
-                  stroke={LINE_HI} strokeWidth="2.5" className="line" />
+                  stroke={LINE_HI} strokeWidth="2.5" className="line"
+                  style={{ strokeDasharray: 520, strokeDashoffset: 520 }} />
                 <circle cx={CX} cy={CY} r="86" fill="none" stroke={LINE_HI}
-                  strokeWidth="2.5" className="line" />
+                  strokeWidth="2.5" className="line"
+                  style={{ strokeDasharray: 541, strokeDashoffset: 541 }} />
                 <circle cx={CX} cy={CY} r="5" fill={LINE_HI} />
                 <rect x={P.x} y={CY - 150} width="132" height="300" fill="none"
                   stroke={LINE} strokeWidth="2.5" />
@@ -350,10 +358,6 @@ export default function Intro({ onDone }: { onDone: () => void }) {
                         <polygon key={i} points={pentaPts(CX + b.cx, CY + b.cy, 33, b.rot)}
                           fill="#0e1826" opacity=".88" />
                       ))}
-                      {/* squad22 mark, sitting in a white gap between the panels */}
-                      <image href="/images/logo-mono.webp"
-                        x={CX - 22} y={CY - BALL_R + 6} width="44" height="44"
-                        opacity=".95" />
                     </g>
                   </g>
                 )}
@@ -488,27 +492,29 @@ function Explainer({ onRules }: { onRules: () => void }) {
           />
         </div>
 
-        {/* copy */}
-        <div style={{ flex: '1 1 320px', minWidth: 280, textAlign: 'left' }}>
-          <div className="fiu" style={{
-            fontSize: 12, fontWeight: 800, letterSpacing: 3, textTransform: 'uppercase',
-            color: '#5ea6e0', marginBottom: 10,
-          }}>
-            Squad22 · Football Strategy Card Game
-          </div>
-
+        {/* copy — height-budgeted to fit within the card's own height (302px),
+            same rule applied to every screen after this one. */}
+        <div style={{ flex: '1 1 320px', minWidth: 280, maxWidth: 340, height: 302,
+          textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <h2 className="fiu" style={{
-            color: '#f4f8fc', fontSize: 36, fontWeight: 800, margin: '0 0 16px',
-            letterSpacing: '-0.5px', lineHeight: 1.15, animationDelay: '70ms',
+            color: '#f4f8fc', fontSize: 28, fontWeight: 800, margin: 0,
+            letterSpacing: '-0.5px', lineHeight: 1.15,
             fontFamily: 'Georgia, "Times New Roman", serif',
           }}>
             This is Squad22.
           </h2>
 
           <div className="fiu" style={{
-            color: 'rgba(214,228,245,.86)', fontSize: 15.5, lineHeight: 1.75,
-            margin: 0, animationDelay: '140ms', display: 'flex',
-            flexDirection: 'column', gap: 12,
+            fontSize: 10.5, fontWeight: 800, letterSpacing: 2.5, textTransform: 'uppercase',
+            color: '#5ea6e0', margin: '5px 0 14px', animationDelay: '60ms',
+          }}>
+            Football Strategy Card Game
+          </div>
+
+          <div className="fiu" style={{
+            color: 'rgba(214,228,245,.86)', fontSize: 13.5, lineHeight: 1.5,
+            margin: 0, animationDelay: '130ms', display: 'flex',
+            flexDirection: 'column', gap: 8,
           }}>
             <p style={{ margin: 0 }}>
               Every card matters, every decision carries risk, and the perfect
@@ -521,17 +527,17 @@ function Explainer({ onRules }: { onRules: () => void }) {
             <p style={{ margin: 0 }}>
               Easy to begin. Different every time. Deeper than it first appears.
             </p>
-            <p style={{ margin: '4px 0 0', color: '#f4f8fc', fontWeight: 700, fontSize: 16.5 }}>
+            <p style={{ margin: '4px 0 0', color: '#f4f8fc', fontWeight: 700, fontSize: 14.5 }}>
               Can you build the winning squad?
             </p>
           </div>
 
           <button onClick={onRules} className="fiu" style={{
-            marginTop: 24, padding: '13px 42px', fontSize: 13, fontWeight: 800,
-            letterSpacing: 2.5, textTransform: 'uppercase', color: '#f4f8fc',
+            alignSelf: 'flex-start', marginTop: 16, padding: '11px 38px', fontSize: 12.5,
+            fontWeight: 800, letterSpacing: 2.5, textTransform: 'uppercase', color: '#f4f8fc',
             background: 'linear-gradient(135deg, #2f7ec2, #1f3a56)',
             border: '1px solid rgba(159,210,255,.55)', borderRadius: 999, cursor: 'pointer',
-            boxShadow: '0 8px 26px rgba(61,155,224,.35)', animationDelay: '220ms',
+            boxShadow: '0 8px 26px rgba(61,155,224,.35)', animationDelay: '190ms',
           }}>
             Rules
           </button>
