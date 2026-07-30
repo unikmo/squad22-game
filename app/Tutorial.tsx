@@ -405,12 +405,12 @@ const SLIDES: Slide[] = [
   },
   {
     key: 'pair', title: 'Position Pair', render: PairSlide,
-    body: 'Play 2 cards that share the same position number — here, two number 1s.',
+    body: 'A position can only ever be opened one of two official ways. First: play 2 cards that share the same position number — here, two number 1s. That instantly fills the slot.',
   },
   {
     key: 'triple', title: 'Trait Triple', render: TripleSlide,
-    body: 'Play 3 cards with the same trait, in 3 different positions — here, three CONTROL cards in positions 1, 3 and 9.',
-    note: 'You can later add a second card to a position you opened with a Trait Triple.',
+    body: 'Second way: play 3 cards with the same trait, in 3 different positions — here, three CONTROL cards in positions 1, 3 and 9. Each position opens with just 1 card.',
+    note: 'Risk and reward: any player — even your opponent — can later finish one of those half-open slots by playing a single matching-position card of any trait. The slot fills either way, but the points always go to whoever plays that completing card.',
   },
   {
     key: 'flex', title: 'Flex Cards', render: FlexSlide,
