@@ -3,21 +3,21 @@
 import { useState } from 'react';
 
 /**
- * Card-based rules walkthrough shown after the cold open, in actual turn
- * order: shuffle -> deal (+ start the Open Pile) -> draw -> play a Position
- * Pair -> play a Trait Triple -> discard (mandatory, hand penalty) -> your
- * squad builds up -> the match ends. Advances manually so nobody feels
- * rushed. Every slide is a fixed-size visual on the left and text on the
- * right — same layout rule as the explainer screen, and the text column
- * never runs taller than the visual box next to it.
+ * Card-based rules walkthrough shown after the cold open, following the
+ * official rule card almost slide-for-slide: your squad -> shuffle -> deal
+ * (+ start the Open Pile) -> draw -> position pair -> trait triple -> flex
+ * (the "joker") -> discard -> how your squad sits at the table -> round end
+ * -> the match ends. Advances manually so nobody feels rushed.
  *
- * Cards shown are real card art, plain — no invented badges or bonus scores
- * drawn on top of them. The rule itself lives in the words on the right.
+ * Every slide is a fixed-height visual on the left and text budgeted to that
+ * same height on the right, same rule as the explainer screen. Cards are
+ * real card art; a small position-number badge is added only where the
+ * rule text itself is "the number", i.e. the Open Pile and the squad
+ * lineup — everywhere else the cards are shown plain.
  */
 
 const cardImg = (id: number) => `/images/cards/${String(id).padStart(2, '0')}.webp`;
 
-// Same texture as the cold open / explainer, so the pitch motif never disappears.
 const pitchBg: React.CSSProperties = {
   backgroundColor: '#0e1826',
   backgroundImage: `
@@ -35,10 +35,9 @@ const ctaStyle: React.CSSProperties = {
   boxShadow: '0 6px 20px rgba(61,155,224,.3)',
 };
 
-const VW_ = 220;  // visual column width
-const VH_ = 280;  // visual column height — the text column budgets to this too
+const VH_ = 280; // every visual box (and its matching text column) targets this height
 
-/** The real card back, framed with the same white card-edge as the print art. Plain — nothing drawn on top. */
+/** The real card back, framed with the same white card-edge as the print art. */
 function CardBackImg({ w, style }: { w: number; style?: React.CSSProperties }) {
   const h = Math.round(w * 1.4);
   return (
@@ -54,18 +53,56 @@ function CardBackImg({ w, style }: { w: number; style?: React.CSSProperties }) {
   );
 }
 
-/** A real player card, plain — white edge, nothing else drawn on it. */
-function RealCard({ id, w, style }: { id: number; w: number; style?: React.CSSProperties }) {
+/** A real player card. `n` adds a small position-number badge, used only for
+    the Open Pile and the squad lineup, where the number is the whole point. */
+function RealCard({ id, w, n, style }: { id: number; w: number; n?: number; style?: React.CSSProperties }) {
   const h = Math.round(w * 1.42);
   return (
     <div style={{
       width: w, height: h, borderRadius: w * 0.13, background: '#eef3f8',
-      padding: Math.max(2, w * 0.045), boxShadow: '0 8px 20px rgba(0,0,0,.5)', ...style,
+      padding: Math.max(2, w * 0.045), boxShadow: '0 8px 20px rgba(0,0,0,.5)',
+      position: 'relative', ...style,
     }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={cardImg(id)} alt="" style={{
         width: '100%', height: '100%', borderRadius: w * 0.1, objectFit: 'cover', display: 'block',
       }} />
+      {n != null && (
+        <div style={{
+          position: 'absolute', top: w * 0.08, left: w * 0.08,
+          width: Math.max(14, w * 0.26), height: Math.max(14, w * 0.26), borderRadius: '50%',
+          background: '#162638', color: '#fff', fontSize: Math.max(9, w * 0.15), fontWeight: 900,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #fff',
+        }}>
+          {n}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function YourSquadSlide() {
+  const formations = ['4-4-2', '4-3-3', '3-5-2', '5-3-2'];
+  return (
+    <div className="v-center" style={{ gap: 16 }}>
+      <div className="squadstat">
+        <div className="num">22<span>+3</span></div>
+        <div className="lbl">Players + Staff<br />= a Full Squad</div>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', maxWidth: 170 }}>
+        {formations.map((f, i) => (
+          <div key={f} className="chip" style={{ animation: `chipIn .4s ease ${i * 90}ms both` }}>{f}</div>
+        ))}
+      </div>
+      <style>{`
+        .squadstat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .num { font-size: 40px; font-weight: 900; color: #f4f8fc; line-height: 1; }
+        .num span { font-size: 22px; color: #5ea6e0; }
+        .lbl { font-size: 10.5px; color: rgba(190,220,250,.7); text-align: center; font-weight: 700; line-height: 1.4; }
+        .chip { padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 800;
+                color: #cfe4fb; border: 1px solid rgba(61,155,224,.45); background: rgba(61,155,224,.1); }
+        @keyframes chipIn { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: scale(1); } }
+      `}</style>
     </div>
   );
 }
@@ -96,45 +133,69 @@ function DealSlide() {
   const stack = (label: string, baseDelay: number) => (
     <div className="dealcol">
       <div className="dealtag">{label}</div>
-      <div style={{ position: 'relative', width: 40, height: 60 }}>
+      <div style={{ position: 'relative', width: 54, height: 76 }}>
         {Array.from({ length: 7 }, (_, i) => (
-          <CardBackImg key={i} w={34} style={{
-            position: 'absolute', top: i * 6, left: 0,
-            animation: `dealIn .4s cubic-bezier(.2,.9,.25,1) ${baseDelay + i * 70}ms both`,
+          <CardBackImg key={i} w={46} style={{
+            position: 'absolute', top: i * 7, left: 0,
+            animation: `dealIn .4s cubic-bezier(.2,.9,.25,1) ${baseDelay + i * 65}ms both`,
           }} />
         ))}
       </div>
     </div>
   );
   return (
-    <div className="v-center">
-      <div style={{ display: 'flex', gap: 22 }}>
+    <div className="v-center" style={{ gap: 14 }}>
+      <div style={{ display: 'flex', gap: 24 }}>
         {stack('You', 0)}
-        {stack('Rival', 550)}
+        {stack('Opponent', 500)}
+      </div>
+      <div className="dealcol">
+        <div className="dealtag">Open Pile starts</div>
+        <RealCard id={17} w={46} style={{ animation: 'flipIn .5s cubic-bezier(.2,.9,.25,1) 1050ms both' }} />
       </div>
       <style>{`
-        .dealcol { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-        .dealtag { font-size: 10.5px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+        .dealcol { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .dealtag { font-size: 10px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase;
                    color: rgba(190,220,250,.75); }
-        @keyframes dealIn { from { transform: translateY(-20px) scale(.5); opacity: 0; }
+        @keyframes dealIn { from { transform: translateY(-18px) scale(.5); opacity: 0; }
                              to   { transform: translateY(0) scale(1); opacity: 1; } }
+        @keyframes flipIn { from { transform: scale(.5) rotateY(90deg); opacity: 0; }
+                             to   { transform: scale(1) rotateY(0deg); opacity: 1; } }
       `}</style>
     </div>
   );
 }
 
 function DrawBoardSlide() {
+  const openIds = [6, 9, 17, 25, 32];
+  const openPos = [3, 4, 6, 8, 9];
   return (
     <div className="v-center" style={{ gap: 10 }}>
-      <div style={{ position: 'relative', width: 70, height: 98 }}>
-        <RealCard id={17} w={70} style={{ position: 'absolute', left: 6, top: 6 }} />
-        <RealCard id={17} w={70} style={{ position: 'absolute', left: 3, top: 3 }} />
-        <RealCard id={17} w={70} style={{ position: 'absolute', left: 0, top: 0, animation: 'pulseGlow 1.8s ease-in-out infinite' }} />
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 22 }}>
+        <div className="pilecol">
+          <div style={{ position: 'relative', width: 52, height: 74 }}>
+            <CardBackImg w={46} style={{ position: 'absolute', left: 5, top: 5 }} />
+            <CardBackImg w={46} style={{ position: 'absolute', left: 2, top: 2 }} />
+            <CardBackImg w={46} style={{ position: 'absolute', left: 0, top: 0, animation: 'pulseGlow 1.8s ease-in-out infinite' }} />
+          </div>
+          <div className="pt">Draw Pile</div>
+        </div>
+        <div className="ortag">OR</div>
+        <div className="pilecol">
+          <div style={{ position: 'relative', width: 74, height: 60 }}>
+            {openIds.map((id, i) => (
+              <RealCard key={id} id={id} n={openPos[i]} w={38} style={{
+                position: 'absolute', left: i * 9, top: 0, zIndex: i,
+              }} />
+            ))}
+          </div>
+          <div className="pt">Open Pile</div>
+        </div>
       </div>
-      <div className="ortag">OR</div>
-      <RealCard id={25} w={70} />
       <style>{`
-        .ortag { color: #3d9be0; font-size: 11px; font-weight: 900; }
+        .pilecol { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .pt { font-size: 10px; font-weight: 800; color: rgba(190,220,250,.75); letter-spacing: .5px; }
+        .ortag { color: #3d9be0; font-size: 11px; font-weight: 900; margin-bottom: 30px; }
         @keyframes pulseGlow { 0%,100% { filter: drop-shadow(0 6px 12px rgba(0,0,0,.5)); }
                                 50%    { filter: drop-shadow(0 0 14px rgba(61,155,224,.8)); } }
       `}</style>
@@ -181,70 +242,128 @@ function TripleSlide() {
   );
 }
 
+function FlexSlide() {
+  return (
+    <div className="v-center">
+      <RealCard id={19} w={104} style={{ animation: 'flexPulse 2.2s ease-in-out infinite' }} />
+      <style>{`
+        @keyframes flexPulse { 0%,100% { transform: scale(1) rotate(0deg); }
+                                50%    { transform: scale(1.04) rotate(-2deg); } }
+      `}</style>
+    </div>
+  );
+}
+
 function DiscardSlide() {
   return (
     <div className="v-center" style={{ gap: 12 }}>
       <div style={{ display: 'flex', gap: 8 }}>
-        <RealCard id={9} w={54} />
-        <RealCard id={40} w={54} />
+        <RealCard id={9} w={58} />
+        <RealCard id={40} w={58} />
       </div>
-      <div className="downarrow">↓ discard 1, every round</div>
-      <RealCard id={12} w={58} style={{ animation: 'dropIn .6s cubic-bezier(.2,.9,.25,1) .2s both' }} />
+      <div className="downarrow">↓ discard 1 (unless hand is empty)</div>
+      <RealCard id={12} w={60} style={{ animation: 'dropIn .6s cubic-bezier(.2,.9,.25,1) .2s both' }} />
       <style>{`
-        .downarrow { font-size: 10.5px; color: rgba(190,220,250,.65); font-weight: 700; }
+        .downarrow { font-size: 10px; color: rgba(190,220,250,.65); font-weight: 700; text-align: center; max-width: 190px; }
         @keyframes dropIn { from { transform: translateY(-14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       `}</style>
     </div>
   );
 }
 
-function SquadSlide() {
-  const slots = [
-    { x: 22, y: 30, id: 1 }, { x: 76, y: 0, id: 16 }, { x: 76, y: 62, id: 30 }, { x: 130, y: 30, id: 36 },
+function LineupSlide() {
+  // A representative slice of one side's lineup (not all 11 — kept legible),
+  // showing the starter+substitute pattern, plus the two shared piles.
+  const positions = [
+    { label: 'GK · 1', ids: [1], n: [1] },
+    { label: 'DEF · 3', ids: [6, 8], n: [3, 3] },
+    { label: 'MID · 6', ids: [17], n: [6] },
+    { label: 'STR · 10', ids: [36, 40], n: [10, 10] },
   ];
   return (
-    <div className="v-center">
-      <div style={{ position: 'relative', width: 172, height: 96, borderRadius: 10,
-        border: '1.5px solid rgba(124,188,240,.35)', background: 'rgba(61,155,224,.05)' }}>
-        <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: 'rgba(124,188,240,.3)' }} />
-        <div style={{ position: 'absolute', left: '50%', top: '50%', width: 36, height: 36, marginLeft: -18, marginTop: -18,
-          borderRadius: '50%', border: '1.5px solid rgba(124,188,240,.3)' }} />
-        {slots.map((s, i) => (
-          <div key={s.id} style={{
-            position: 'absolute', left: s.x, top: s.y,
-            animation: `popIn .5s cubic-bezier(.2,.9,.25,1) ${i * 200}ms both`,
-          }}>
-            <RealCard id={s.id} w={30} />
+    <div className="v-center" style={{ gap: 8 }}>
+      <div className="lineup">
+        {positions.map((p) => (
+          <div key={p.label} className="posrow">
+            <div className="poslabel">{p.label}</div>
+            <div className="poscards">
+              {p.ids.map((id, i) => (
+                <RealCard key={id} id={id} n={p.n[i]} w={26} />
+              ))}
+            </div>
           </div>
         ))}
       </div>
+      <div className="pilesrow">
+        <CardBackImg w={30} />
+        <RealCard id={25} n={8} w={30} />
+      </div>
+      <div className="pilesnote">the only 2 piles, shared at the centre</div>
       <style>{`
-        @keyframes popIn { from { transform: scale(.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .lineup { display: flex; flex-direction: column; gap: 5px; width: 190px; }
+        .posrow { display: flex; align-items: center; justify-content: space-between;
+                  background: rgba(61,155,224,.06); border: 1px solid rgba(124,188,240,.2);
+                  border-radius: 8px; padding: 4px 8px; }
+        .poslabel { font-size: 9.5px; font-weight: 800; color: rgba(190,220,250,.7); letter-spacing: .3px; }
+        .poscards { display: flex; gap: 4px; }
+        .pilesrow { display: flex; gap: 8px; margin-top: 4px; }
+        .pilesnote { font-size: 9.5px; color: rgba(190,220,250,.55); font-style: italic; }
+      `}</style>
+    </div>
+  );
+}
+
+function RoundEndSlide() {
+  const items = [
+    { icon: '🖐️', label: 'Hand is empty' },
+    { icon: '🂠', label: 'Draw Pile runs out' },
+    { icon: '🛡️', label: 'Full Squad completed (+50)' },
+  ];
+  return (
+    <div className="v-center" style={{ gap: 10 }}>
+      {items.map((it, i) => (
+        <div key={it.label} className="enditem" style={{ animation: `fadeInOnly .4s ease ${i * 140}ms both` }}>
+          <span className="ic">{it.icon}</span>
+          <span className="tx">{it.label}</span>
+        </div>
+      ))}
+      <style>{`
+        .enditem { display: flex; align-items: center; gap: 10px; width: 176px;
+                   background: rgba(61,155,224,.07); border: 1px solid rgba(124,188,240,.22);
+                   border-radius: 10px; padding: 8px 12px; }
+        .ic { font-size: 18px; }
+        .tx { font-size: 11px; font-weight: 700; color: #cfe4fb; }
+        @keyframes fadeInOnly { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   );
 }
 
 function Trophy() {
+  // Bigger, round-eared cup — closer to a continental-final trophy silhouette.
   return (
-    <svg width="104" height="132" viewBox="0 0 72 92" style={{ filter: 'drop-shadow(0 10px 18px rgba(0,0,0,.55))' }}>
+    <svg width="112" height="140" viewBox="0 0 100 130" style={{ filter: 'drop-shadow(0 12px 20px rgba(0,0,0,.55))' }}>
       <defs>
-        <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#fff6d8" />
-          <stop offset="45%" stopColor="#f0c14b" />
-          <stop offset="100%" stopColor="#b9791a" />
+        <linearGradient id="gold2" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#fff8de" />
+          <stop offset="42%" stopColor="#f3c74e" />
+          <stop offset="100%" stopColor="#a86e14" />
         </linearGradient>
       </defs>
-      <path d="M18 6 H54 V27 C54 43 45 51 36 51 C27 51 18 43 18 27 Z"
-        fill="url(#gold)" stroke="#8a5a10" strokeWidth="1.4" />
-      <path d="M18 13 C5 13 5 36 20 36" fill="none" stroke="url(#gold)"
-        strokeWidth="5" strokeLinecap="round" />
-      <path d="M54 13 C67 13 67 36 52 36" fill="none" stroke="url(#gold)"
-        strokeWidth="5" strokeLinecap="round" />
-      <rect x="32" y="51" width="8" height="15" fill="url(#gold)" />
-      <rect x="21" y="66" width="30" height="8" rx="2" fill="url(#gold)" stroke="#8a5a10" strokeWidth="1" />
-      <rect x="14" y="75" width="44" height="9" rx="2.5" fill="url(#gold)" stroke="#8a5a10" strokeWidth="1" />
-      <path d="M23 9 Q20 26 29 37" fill="none" stroke="#fff8e0" strokeWidth="2" opacity=".55" strokeLinecap="round" />
+      {/* big round handles */}
+      <circle cx="20" cy="34" r="15" fill="none" stroke="url(#gold2)" strokeWidth="7" />
+      <circle cx="80" cy="34" r="15" fill="none" stroke="url(#gold2)" strokeWidth="7" />
+      {/* cup body */}
+      <path d="M28 12 H72 V38 C72 62 58 74 50 74 C42 74 28 62 28 38 Z"
+        fill="url(#gold2)" stroke="#8a5a10" strokeWidth="1.6" />
+      <rect x="25" y="8" width="50" height="9" rx="3" fill="url(#gold2)" stroke="#8a5a10" strokeWidth="1.4" />
+      {/* stem */}
+      <path d="M44 74 L40 96 H60 L56 74 Z" fill="url(#gold2)" stroke="#8a5a10" strokeWidth="1.4" />
+      {/* base */}
+      <rect x="30" y="96" width="40" height="10" rx="3" fill="url(#gold2)" stroke="#8a5a10" strokeWidth="1.4" />
+      <rect x="20" y="106" width="60" height="12" rx="4" fill="url(#gold2)" stroke="#8a5a10" strokeWidth="1.4" />
+      {/* shine */}
+      <path d="M34 16 Q30 40 42 60" fill="none" stroke="#fffbe8" strokeWidth="2.4" opacity=".6" strokeLinecap="round" />
     </svg>
   );
 }
@@ -266,40 +385,54 @@ type Slide = { key: string; title: string; body: string; note?: string; render: 
 
 const SLIDES: Slide[] = [
   {
+    key: 'squad', title: 'Your Squad', render: YourSquadSlide,
+    body: 'A Full Squad is 22 Player cards + 3 Staff. Pick a formation first — 4-4-2, 4-3-3, 3-5-2 or 5-3-2 — it decides your lineup.',
+    note: 'Each position can hold at most 2 cards: one starter, one substitute.',
+  },
+  {
     key: 'shuffle', title: 'Shuffle', render: ShuffleSlide,
-    body: 'The 58-card deck is shuffled before every match — same deck, different game every time.',
+    body: 'All 58 cards are shuffled before every match. Agree on a target score first — 300, 500 or 600.',
   },
   {
     key: 'deal', title: 'Deal', render: DealSlide,
-    body: 'Each player is dealt a starting hand of 5 or 7 cards (house rule).',
-    note: 'One more card is flipped face-up to start the Open Pile.',
+    body: 'Each player is dealt a hand of 5 or 7 cards. One more card is flipped face-up to start the Open Pile — the rest sit face-down as the Draw Pile.',
   },
   {
     key: 'draw', title: 'Draw', render: DrawBoardSlide,
-    body: 'On your turn, draw 1 card — from the closed Draw Pile, or take the top card sitting face-up on the Open Pile.',
-    note: 'Taking from the Open Pile means taking that card and everything stacked on top of it, not just one from the middle.',
+    body: 'On your turn, draw from one pile only — never both. Draw Pile: take 1 card blind. Open Pile: take the top card, and everything stacked above it, but only if you can play it immediately.',
   },
   {
     key: 'pair', title: 'Position Pair', render: PairSlide,
-    body: 'Play 2 cards that share the same position number. Trait doesn’t matter here — only position does.',
+    body: 'Play 2 cards that share the same position number — say, two number 7s.',
   },
   {
     key: 'triple', title: 'Trait Triple', render: TripleSlide,
-    body: 'Play 3 cards with the same trait, in 3 different positions.',
+    body: 'Play 3 cards with the same trait (colour), in 3 different positions — say, positions 3, 5 and 6.',
+    note: 'You can later add a second card to a position you opened with a Trait Triple.',
+  },
+  {
+    key: 'flex', title: 'Flex Cards', render: FlexSlide,
+    body: 'Flex is your joker — it plays in any position, worth nothing extra on the table.',
+    note: 'But it’s the riskiest card to hold: −15 if it’s still in your hand when the round ends.',
   },
   {
     key: 'discard', title: 'Discard', render: DiscardSlide,
-    body: 'You must discard at least 1 card to end your turn — it becomes the new Open Pile.',
-    note: 'Any card left sitting in your hand costs you points, so don’t hoard.',
+    body: 'End your turn by discarding 1 card face-up onto the Open Pile — unless your hand is already empty.',
+    note: 'Drew a card you can’t use, and nothing in hand plays either? That exact card must be the one you discard.',
   },
   {
-    key: 'squad', title: 'Build Your Squad', render: SquadSlide,
-    body: 'Cards you play stay on your table, building your squad’s formation for the rest of the match.',
+    key: 'lineup', title: 'At the Table', render: LineupSlide,
+    body: 'Every card you play stays on your own side, lined up by position from goalkeeper onward — up to 2 per slot.',
+    note: 'The centre only ever holds 2 things: the closed Draw Pile and the face-up Open Pile.',
+  },
+  {
+    key: 'roundend', title: 'Round End', render: RoundEndSlide,
+    body: 'The round ends the instant any of these happen. Completing a Full Squad also scores a 50-point bonus.',
   },
   {
     key: 'win', title: 'The Match Ends', render: WinSlide,
-    body: 'The moment a team’s total reaches the target score — 300 or 500, house rule — the match ends.',
-    note: 'Score is counted on the cards: it’s the sum of every card you’ve played. No bonus points, just what’s printed. Most points wins.',
+    body: 'The match ends once a team’s total reaches the agreed target (300, 500 or 600).',
+    note: 'Scoring: cards on your table count + their points (10, 5, or 10 for Staff); any card still in your hand at round end counts against you (−10, −5, or −15 for Flex).',
   },
 ];
 
@@ -326,16 +459,14 @@ export default function Tutorial({ onDone }: { onDone: () => void }) {
         display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center',
         gap: 36, maxWidth: 700, margin: '0 auto',
       }}>
-        {/* visual, fixed box, same footprint every slide */}
         <div key={slide.key} className="tut-fiu" style={{
-          flex: '0 0 auto', width: VW_, height: VH_, borderRadius: 16,
+          flex: '0 0 auto', width: 220, height: VH_, borderRadius: 16,
           border: '1px solid rgba(124,188,240,.22)', background: 'rgba(61,155,224,.04)',
           boxShadow: '0 18px 40px rgba(0,0,0,.4)',
         }}>
           <Visual />
         </div>
 
-        {/* text — budgeted to the visual's own height, same rule as the explainer */}
         <div key={`t-${slide.key}`} style={{
           flex: '1 1 260px', minWidth: 240, maxWidth: 300, height: VH_,
           display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, textAlign: 'left',
@@ -348,14 +479,14 @@ export default function Tutorial({ onDone }: { onDone: () => void }) {
           </div>
 
           <h3 className="tut-fiu" style={{
-            color: '#f4f8fc', fontSize: 22, fontWeight: 800, margin: 0,
+            color: '#f4f8fc', fontSize: 21, fontWeight: 800, margin: 0,
             letterSpacing: '-0.3px', animationDelay: '50ms',
           }}>
             {slide.title}
           </h3>
 
           <p className="tut-fiu" style={{
-            color: 'rgba(214,228,245,.86)', fontSize: 13.5, lineHeight: 1.5, margin: 0,
+            color: 'rgba(214,228,245,.86)', fontSize: 12.5, lineHeight: 1.45, margin: 0,
             animationDelay: '100ms',
           }}>
             {slide.body}
@@ -363,14 +494,14 @@ export default function Tutorial({ onDone }: { onDone: () => void }) {
 
           {slide.note && (
             <p className="tut-fiu" style={{
-              color: 'rgba(190,220,250,.62)', fontSize: 11.5, lineHeight: 1.5, margin: 0,
+              color: 'rgba(190,220,250,.62)', fontSize: 10.8, lineHeight: 1.45, margin: 0,
               fontStyle: 'italic', animationDelay: '140ms',
             }}>
               {slide.note}
             </p>
           )}
 
-          <div style={{ display: 'flex', gap: 6, margin: '6px 0 2px' }}>
+          <div style={{ display: 'flex', gap: 5, margin: '4px 0 2px', flexWrap: 'wrap' }}>
             {SLIDES.map((s, idx) => (
               <div key={s.key} style={{
                 width: 6, height: 6, borderRadius: '50%',
