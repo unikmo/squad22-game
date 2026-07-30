@@ -39,3 +39,6 @@ scripts/
 
 # Vercel
 .vercel/
+
+.vercel
+.env*

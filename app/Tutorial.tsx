@@ -11,9 +11,16 @@ import { useState } from 'react';
  *
  * Every slide is a fixed-height visual on the left and text budgeted to that
  * same height on the right, same rule as the explainer screen. Cards are
- * real card art; a small position-number badge is added only where the
- * rule text itself is "the number", i.e. the Open Pile and the squad
- * lineup — everywhere else the cards are shown plain.
+ * the real, final print art (public/images/cards/NN.webp, matching the
+ * "PNG 2,5x3,5in" source set 1:1) — every card already has its position
+ * number, position letter, trait icon, points and player name baked
+ * directly into the artwork, so nothing is ever overlaid on top of them.
+ * Card numbers used in each slide were individually verified against the
+ * real artwork (not the old lib/cards.ts placeholder data model) so that
+ * Position Pair / Trait Triple / Flex examples are all genuinely legal:
+ *  - Position Pair: 1 Bertrand + 2 Njaso (both position 1)
+ *  - Trait Triple: 2 Njaso / 10 Carifive / 34 Souley (all CONTROL, positions 1/3/9)
+ *  - Flex ("joker"): 58 Anim (Humphrey) — the actual Joker card
  */
 
 const cardImg = (id: number) => `/images/cards/${String(id).padStart(2, '0')}.webp`;
@@ -53,9 +60,10 @@ function CardBackImg({ w, style }: { w: number; style?: React.CSSProperties }) {
   );
 }
 
-/** A real player card. `n` adds a small position-number badge, used only for
-    the Open Pile and the squad lineup, where the number is the whole point. */
-function RealCard({ id, w, n, style }: { id: number; w: number; n?: number; style?: React.CSSProperties }) {
+/** A real player card, shown exactly as printed — position number, position
+    letter, trait icon, points and name are all already part of the art, so
+    nothing is ever added on top. */
+function RealCard({ id, w, style }: { id: number; w: number; style?: React.CSSProperties }) {
   const h = Math.round(w * 1.42);
   return (
     <div style={{
@@ -67,16 +75,6 @@ function RealCard({ id, w, n, style }: { id: number; w: number; n?: number; styl
       <img src={cardImg(id)} alt="" style={{
         width: '100%', height: '100%', borderRadius: w * 0.1, objectFit: 'cover', display: 'block',
       }} />
-      {n != null && (
-        <div style={{
-          position: 'absolute', top: w * 0.08, left: w * 0.08,
-          width: Math.max(14, w * 0.26), height: Math.max(14, w * 0.26), borderRadius: '50%',
-          background: '#162638', color: '#fff', fontSize: Math.max(9, w * 0.15), fontWeight: 900,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #fff',
-        }}>
-          {n}
-        </div>
-      )}
     </div>
   );
 }
@@ -167,8 +165,7 @@ function DealSlide() {
 }
 
 function DrawBoardSlide() {
-  const openIds = [6, 9, 17, 25, 32];
-  const openPos = [3, 4, 6, 8, 9];
+  const openIds = [8, 9, 12, 17, 25]; // Michael, Indah, Lars, Mifi, Nickson — real, verified cards
   return (
     <div className="v-center" style={{ gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 22 }}>
@@ -184,7 +181,7 @@ function DrawBoardSlide() {
         <div className="pilecol">
           <div style={{ position: 'relative', width: 74, height: 60 }}>
             {openIds.map((id, i) => (
-              <RealCard key={id} id={id} n={openPos[i]} w={38} style={{
+              <RealCard key={id} id={id} w={38} style={{
                 position: 'absolute', left: i * 9, top: 0, zIndex: i,
               }} />
             ))}
@@ -204,11 +201,12 @@ function DrawBoardSlide() {
 }
 
 function PairSlide() {
+  // Bertrand + Njaso — both real position-1 cards, a genuine Position Pair.
   return (
     <div className="v-center">
       <div style={{ display: 'flex', gap: 10 }}>
-        <RealCard id={15} w={92} style={{ animation: 'inFromLeft .6s cubic-bezier(.2,.9,.25,1) both' }} />
-        <RealCard id={16} w={92} style={{ animation: 'inFromRight .6s cubic-bezier(.2,.9,.25,1) both' }} />
+        <RealCard id={1} w={92} style={{ animation: 'inFromLeft .6s cubic-bezier(.2,.9,.25,1) both' }} />
+        <RealCard id={2} w={92} style={{ animation: 'inFromRight .6s cubic-bezier(.2,.9,.25,1) both' }} />
       </div>
       <style>{`
         @keyframes inFromLeft  { from { transform: translateX(-40px) rotate(-6deg); opacity: 0; }
@@ -221,7 +219,7 @@ function PairSlide() {
 }
 
 function TripleSlide() {
-  const ids = [3, 20, 36];
+  const ids = [2, 10, 34]; // Njaso, Carifive, Souley — all CONTROL, positions 1 / 3 / 9
   const anims = ['t0in', 't1in', 't2in'];
   return (
     <div className="v-center">
@@ -243,9 +241,10 @@ function TripleSlide() {
 }
 
 function FlexSlide() {
+  // Card 58 — Anim (Humphrey) — the real Joker/Flex card.
   return (
     <div className="v-center">
-      <RealCard id={19} w={104} style={{ animation: 'flexPulse 2.2s ease-in-out infinite' }} />
+      <RealCard id={58} w={104} style={{ animation: 'flexPulse 2.2s ease-in-out infinite' }} />
       <style>{`
         @keyframes flexPulse { 0%,100% { transform: scale(1) rotate(0deg); }
                                 50%    { transform: scale(1.04) rotate(-2deg); } }
@@ -258,8 +257,8 @@ function DiscardSlide() {
   return (
     <div className="v-center" style={{ gap: 12 }}>
       <div style={{ display: 'flex', gap: 8 }}>
-        <RealCard id={9} w={58} />
-        <RealCard id={40} w={58} />
+        <RealCard id={8} w={58} />
+        <RealCard id={17} w={58} />
       </div>
       <div className="downarrow">↓ discard 1 (unless hand is empty)</div>
       <RealCard id={12} w={60} style={{ animation: 'dropIn .6s cubic-bezier(.2,.9,.25,1) .2s both' }} />
@@ -273,12 +272,15 @@ function DiscardSlide() {
 
 function LineupSlide() {
   // A representative slice of one side's lineup (not all 11 — kept legible),
-  // showing the starter+substitute pattern, plus the two shared piles.
+  // showing the starter+substitute pattern, plus the two shared piles. Every
+  // id/position below is verified against the real card art: Bertrand (1),
+  // Indah + Lars (both position 3 — a real starter+sub pair), Nickson (7),
+  // Ayva (9).
   const positions = [
-    { label: 'GK · 1', ids: [1], n: [1] },
-    { label: 'DEF · 3', ids: [6, 8], n: [3, 3] },
-    { label: 'MID · 6', ids: [17], n: [6] },
-    { label: 'STR · 10', ids: [36, 40], n: [10, 10] },
+    { label: 'GK · 1', ids: [1] },
+    { label: 'DEF · 3', ids: [9, 12] },
+    { label: 'MID · 7', ids: [25] },
+    { label: 'STR · 9', ids: [36] },
   ];
   return (
     <div className="v-center" style={{ gap: 8 }}>
@@ -287,8 +289,8 @@ function LineupSlide() {
           <div key={p.label} className="posrow">
             <div className="poslabel">{p.label}</div>
             <div className="poscards">
-              {p.ids.map((id, i) => (
-                <RealCard key={id} id={id} n={p.n[i]} w={26} />
+              {p.ids.map((id) => (
+                <RealCard key={id} id={id} w={26} />
               ))}
             </div>
           </div>
@@ -296,7 +298,7 @@ function LineupSlide() {
       </div>
       <div className="pilesrow">
         <CardBackImg w={30} />
-        <RealCard id={25} n={8} w={30} />
+        <RealCard id={32} w={30} />
       </div>
       <div className="pilesnote">the only 2 piles, shared at the centre</div>
       <style>{`
@@ -403,11 +405,11 @@ const SLIDES: Slide[] = [
   },
   {
     key: 'pair', title: 'Position Pair', render: PairSlide,
-    body: 'Play 2 cards that share the same position number — say, two number 7s.',
+    body: 'Play 2 cards that share the same position number — here, two number 1s.',
   },
   {
     key: 'triple', title: 'Trait Triple', render: TripleSlide,
-    body: 'Play 3 cards with the same trait (colour), in 3 different positions — say, positions 3, 5 and 6.',
+    body: 'Play 3 cards with the same trait, in 3 different positions — here, three CONTROL cards in positions 1, 3 and 9.',
     note: 'You can later add a second card to a position you opened with a Trait Triple.',
   },
   {
