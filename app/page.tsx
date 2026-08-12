@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     question: 'What is available now?',
-    answer: 'The cinematic introduction, animated rules and playable tactical demo are available now. The complete online match engine is the next product milestone before payments are activated.',
+    answer: 'The cinematic, animated rules, tactical demo and full-match solo beta are available now. Payments remain disabled while the full game is tested.',
   },
 ];
 
@@ -141,11 +141,11 @@ export default function Home() {
             <Link href={demoHref}>Play free <span>→</span></Link>
           </article>
           <article className={styles.modeCard}>
-            <span className={styles.modeStatus}>NEXT PRODUCT MILESTONE</span>
+            <span className={styles.modeStatus}>FULL-MATCH BETA LIVE</span>
             <div className={styles.modeNumber}>02</div>
             <h3>Full Online Match</h3>
-            <p>Complete deck, draw/open piles, full rounds, scoring, AI opponent and match targets. This is the paid core product before checkout goes live.</p>
-            <span className={styles.modePending}>Engine in build</span>
+            <p>Complete deck, stacked Open Pile, multi-round scoring, global Trait Triple openings and The Gaffer AI. Test the paid core before checkout goes live.</p>
+            <Link href="/play">Play full match <span>→</span></Link>
           </article>
           <article className={styles.modeCard}>
             <span className={styles.modeStatus}>AFTER SOLO VALIDATION</span>
@@ -174,7 +174,7 @@ export default function Home() {
             <span>FULL ONLINE GAME</span>
             <strong>$14.99 <small>one-time launch price</small></strong>
             <p>Launch price. Pay once, play forever. Full match versus AI first; multiplayer can follow after validation.</p>
-            <button type="button" disabled>Checkout activates after full-game QA</button>
+            <Link href="/play">Play full-match beta</Link>
           </article>
           <article>
             <span>PHYSICAL EDITION</span>
