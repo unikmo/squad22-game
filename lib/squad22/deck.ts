@@ -116,9 +116,10 @@ const staff: Squad22Card[] = Array.from({ length: 12 }, (_, idx) => {
   };
 });
 
-// The print deck count leaves two non-player/non-staff cards. Card 58 is
-// explicitly verified as the Joker; card 57 is treated as its paired Flex card
-// in the online beta and is isolated here for easy correction if source art says otherwise.
+// 44 player + 12 staff = 56 cards, leaving exactly two special cards in the
+// 58-card deck. The approved rules refer to Flex Cards in the plural and card
+// 58 is explicitly verified as the Joker/Flex. Card 57 is therefore treated as
+// the structurally reconstructed second Flex card, while 58 remains art-verified.
 const flex: Squad22Card[] = [57, 58].map((id) => ({
   id,
   name: NAMES[id],
@@ -162,6 +163,6 @@ export const DECK_METADATA_STATUS = {
   greenAndYellowTraits: 'reconstructed',
   staffIds: 'verified',
   flex58: 'verified',
-  flex57: 'provisional',
+  flex57: 'reconstructed',
   playerPoints: 'provisional',
 } as const;
