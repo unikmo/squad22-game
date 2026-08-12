@@ -4,7 +4,7 @@
   "description": "Squad22 - Card Game for Rival Football Fans",
   "scripts": {
     "dev": "next dev",
-    "test:rules": "tsc --module commonjs --moduleResolution node --target es2020 --esModuleInterop --skipLibCheck --outDir .qa-build lib/squad22/deck.ts lib/squad22/engine.ts lib/squad22/ai.ts tests/squad22-regression.ts && node .qa-build/tests/squad22-regression.js",
+    "test:rules": "tsc --module commonjs --moduleResolution node --target es2020 --esModuleInterop --skipLibCheck --outDir .qa-build lib/squad22/deck.ts lib/squad22/engine.ts lib/squad22/ai.ts lib/squad22/stripeServer.ts tests/squad22-regression.ts tests/stripe-signature.ts && node .qa-build/tests/squad22-regression.js && node .qa-build/tests/stripe-signature.js",
     "test": "npm run test:rules",
     "build": "npm run test:rules && next build",
     "start": "next start",
