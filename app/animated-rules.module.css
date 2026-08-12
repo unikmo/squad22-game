@@ -1,0 +1,113 @@
+.shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(330px, .85fr);
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid rgba(225,240,226,.16);
+  border-radius: 24px;
+  background: #07130b;
+  box-shadow: 0 35px 90px rgba(0,0,0,.22);
+}
+
+.stage {
+  position: relative;
+  overflow: hidden;
+  min-height: 560px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(183,243,75,.11), transparent 20rem),
+    linear-gradient(145deg,#06120b,#0b2819);
+}
+
+.pitchLines {
+  position: absolute;
+  inset: 8%;
+  border: 1px solid rgba(229,245,231,.14);
+  border-radius: 24px;
+  background:
+    linear-gradient(90deg,transparent 49.9%,rgba(229,245,231,.11) 50%,transparent 50.1%),
+    radial-gradient(circle at center,transparent 0 69px,rgba(229,245,231,.11) 70px 71px,transparent 72px);
+  transform: perspective(900px) rotateX(54deg) scale(1.05);
+}
+
+.pitchLines::before,.pitchLines::after { content:''; position:absolute; top:27%; width:20%; height:46%; border:1px solid rgba(229,245,231,.11); }
+.pitchLines::before { left:0; border-left:0; }.pitchLines::after { right:0; border-right:0; }
+
+.card { height:auto; border-radius:12px; box-shadow:0 24px 55px rgba(0,0,0,.48),0 0 0 1px rgba(255,255,255,.11); }
+
+.pairScene,.tripleScene,.counterScene { position:relative; z-index:2; width:88%; height:420px; }
+.pairA,.pairB { position:absolute; top:86px; width:clamp(130px,16vw,180px); }
+.pairA { left:10%; animation:pairA .72s cubic-bezier(.13,.85,.18,1) both; }
+.pairB { right:10%; animation:pairB .72s cubic-bezier(.13,.85,.18,1) .15s both; }
+.slotClosed { position:absolute; left:50%; bottom:8px; transform:translateX(-50%) translateY(16px); min-width:230px; padding:12px 18px; border:1px solid rgba(183,243,75,.38); border-radius:12px; text-align:center; color:#d9ff9a; background:rgba(183,243,75,.08); opacity:0; animation:closedIn .42s ease .82s both; }
+.slotClosed span { display:block; font-size:9px; font-weight:900; letter-spacing:.18em; opacity:.72; }.slotClosed strong { display:block; margin-top:4px; font-size:15px; letter-spacing:.1em; }
+
+.tripleScene { display:flex; align-items:center; justify-content:space-around; gap:12px; }
+.openLane { position:relative; width:30%; min-width:130px; height:330px; display:grid; place-items:center; border:1px dashed rgba(236,145,84,.35); border-radius:18px; background:rgba(129,55,20,.04); opacity:0; }
+.openLane .card { width:clamp(112px,13vw,162px); }
+.openLane span { position:absolute; bottom:14px; padding:6px 9px; border-radius:999px; color:#ffc497; background:rgba(191,83,34,.12); font-size:9px; font-weight:900; letter-spacing:.15em; animation:pulse 1s ease .8s infinite alternate; }
+.lane1 { animation:laneIn .52s cubic-bezier(.2,.88,.22,1) both; }.lane2 { animation:laneIn .52s cubic-bezier(.2,.88,.22,1) .16s both; }.lane3 { animation:laneIn .52s cubic-bezier(.2,.88,.22,1) .32s both; }
+
+.counterScene { display:flex; align-items:center; justify-content:center; gap:54px; }
+.exposedSlot { position:relative; width:220px; height:330px; display:grid; place-items:center; border:1px dashed rgba(236,145,84,.46); border-radius:20px; background:rgba(129,55,20,.06); }
+.exposedSlot .card { width:150px; transform:rotate(-4deg); }.exposedSlot span { position:absolute; bottom:14px; color:#ffc497; font-size:9px; font-weight:900; letter-spacing:.13em; }
+.stealCard { width:168px; opacity:0; transform:translateX(420px) rotate(14deg) scale(.82); animation:steal .72s cubic-bezier(.12,.85,.18,1.08) .22s both; }
+.scoreBurst { position:absolute; right:6%; bottom:25px; display:flex; flex-direction:column; min-width:120px; padding:12px 16px; border:1px solid rgba(245,143,82,.36); border-radius:14px; color:#ffe6d4; background:rgba(139,54,19,.2); opacity:0; transform:scale(.65); animation:score .4s cubic-bezier(.2,.9,.3,1.2) .92s both; }
+.scoreBurst small { font-size:9px; font-weight:900; letter-spacing:.15em; opacity:.72; }.scoreBurst strong { font-size:30px; line-height:1; }
+
+.stageCaption { position:absolute; left:20px; right:20px; bottom:18px; z-index:4; display:flex; justify-content:center; pointer-events:none; }
+.stageCaption span { padding:8px 12px; border-radius:999px; color:rgba(205,230,248,.78); background:rgba(4,12,7,.74); border:1px solid rgba(225,240,226,.12); backdrop-filter:blur(10px); font-size:10px; font-weight:900; letter-spacing:.13em; text-transform:uppercase; }
+
+.copyPanel { display:flex; flex-direction:column; justify-content:center; padding:46px; border-left:1px solid rgba(225,240,226,.11); background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.015)); }
+.copyTopline { display:flex; align-items:center; gap:12px; margin-bottom:26px; color:#a4df48; font-size:10px; font-weight:900; letter-spacing:.18em; }.copyTopline span:first-child { display:grid; place-items:center; width:34px; height:34px; border:1px solid rgba(183,243,75,.3); border-radius:50%; }
+.copyPanel h3 { margin:0; max-width:390px; color:#f7f8f1; font-size:clamp(2rem,3vw,3.15rem); line-height:1.02; letter-spacing:-.045em; }
+.copyPanel > p { margin:22px 0 0; max-width:410px; color:#9eaa9d; font-size:.96rem; line-height:1.7; }
+.sceneNav { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-top:34px; }
+.sceneNav button { display:flex; align-items:center; justify-content:center; gap:7px; min-height:44px; border:1px solid rgba(225,240,226,.12); border-radius:10px; color:#849184; background:rgba(255,255,255,.025); font:inherit; font-size:11px; font-weight:800; cursor:pointer; transition:160ms ease; }.sceneNav button span { color:#87c536; }.sceneNav button:hover,.sceneNav .sceneActive { color:#f1f5ed; border-color:rgba(183,243,75,.42); background:rgba(183,243,75,.09); }
+.ruleActions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:16px; }
+.replay,.tryCta { min-height:46px; display:inline-flex; align-items:center; justify-content:center; padding:0 16px; border-radius:10px; font:inherit; font-size:11px; font-weight:900; cursor:pointer; }
+.replay { color:#b8c4b7; border:1px solid rgba(225,240,226,.16); background:transparent; }.tryCta { flex:1; gap:8px; color:#061006; background:linear-gradient(135deg,#c6f578,#8fcf38); text-decoration:none; box-shadow:0 12px 30px rgba(183,243,75,.18); }
+
+@keyframes pairA { from { opacity:0; transform:translateX(-70%) rotate(-14deg) scale(.75); } to { opacity:1; transform:translateX(45px) rotate(-4deg); } }
+@keyframes pairB { from { opacity:0; transform:translateX(70%) rotate(14deg) scale(.75); } to { opacity:1; transform:translateX(-45px) rotate(4deg); } }
+@keyframes closedIn { to { opacity:1; transform:translateX(-50%) translateY(0); } }
+@keyframes laneIn { from { opacity:0; transform:translateY(38px) scale(.84); } to { opacity:1; transform:none; } }
+@keyframes pulse { to { box-shadow:0 0 26px rgba(237,135,76,.28); } }
+@keyframes steal { to { opacity:1; transform:translateX(-34px) rotate(3deg) scale(1); } }
+@keyframes score { to { opacity:1; transform:scale(1); } }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns:1fr; }
+  .stage { min-height:490px; }.copyPanel { border-left:0; border-top:1px solid rgba(225,240,226,.11); }
+}
+
+@media (max-width: 600px) {
+  .stage { min-height:420px; }.pairScene,.tripleScene,.counterScene { height:330px; width:96%; }
+  .pairA,.pairB { top:65px; width:130px; }.pairA { left:2%; }.pairB { right:2%; }
+  .openLane { height:270px; min-width:0; }.openLane .card { width:100px; }.openLane span { font-size:7px; }
+  .counterScene { gap:8px; }.exposedSlot { width:160px; height:260px; }.exposedSlot .card { width:108px; }.stealCard { width:120px; }.scoreBurst { right:2%; bottom:6px; }
+  .copyPanel { padding:28px 20px 24px; }.sceneNav { grid-template-columns:1fr; }.ruleActions { align-items:stretch; flex-direction:column; }.replay,.tryCta { width:100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell * { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+}
+
+/* Agency v3 — rules should feel like a televised tactical sequence, not a settings panel. */
+.shell{min-height:650px;border:0;border-radius:0;background:#050806;box-shadow:0 46px 120px rgba(0,0,0,.34)}
+.stage{min-height:650px;background:repeating-linear-gradient(90deg,#0d3521 0 82px,#0a2b1b 82px 164px)}
+.pitchLines{inset:6%;border-radius:0;border-color:rgba(238,249,240,.18);background:linear-gradient(90deg,transparent 49.85%,rgba(238,249,240,.16) 50%,transparent 50.15%),radial-gradient(circle at center,transparent 0 78px,rgba(238,249,240,.15) 79px 80px,transparent 81px);transform:perspective(1100px) rotateX(58deg) scale(1.04)}
+.pitchLines::before,.pitchLines::after{border-color:rgba(238,249,240,.15)}
+.card{border-radius:8px;box-shadow:0 34px 70px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.14)}
+.slotClosed{border-radius:3px;border-color:rgba(183,243,75,.42);background:rgba(183,243,75,.08);color:#dafe99}
+.openLane,.exposedSlot{border-radius:4px;border-color:rgba(255,106,85,.48);background:rgba(255,106,85,.045)}.openLane span,.exposedSlot span{color:#ff9a87;background:rgba(255,106,85,.08)}
+.copyPanel{padding:58px 52px;border-left:1px solid rgba(255,255,255,.10);background:linear-gradient(180deg,#07110a,#050806)}
+.copyTopline{color:#b7f34b}.copyTopline span:first-child{border-radius:3px;border-color:rgba(183,243,75,.34)}
+.copyPanel h3{font-size:clamp(2.7rem,4vw,4.8rem);line-height:.9;text-transform:uppercase;font-weight:1000}
+.sceneNav{border-top:1px solid rgba(255,255,255,.10);padding-top:18px}.sceneNav button{border-radius:2px;border-color:rgba(255,255,255,.10);background:transparent;text-transform:uppercase;letter-spacing:.06em}.sceneNav button:hover,.sceneNav .sceneActive{border-color:rgba(183,243,75,.42);background:rgba(183,243,75,.06)}
+.replay,.tryCta{border-radius:2px}.tryCta{background:#b7f34b;color:#071108;box-shadow:none}
+.stageCaption span{border-radius:3px;background:rgba(3,7,4,.82);color:#dce6dc}
+@media(max-width:900px){.shell{min-height:0}.stage{min-height:520px}.copyPanel{padding:34px 26px}}
+.globalArrow{font-size:clamp(1.4rem,3vw,2.6rem);font-weight:900;color:rgba(230,255,237,.72);transform:translateY(-6px)}
+.ownStart{position:relative;display:grid;place-items:center;min-width:180px}.ownStart span{position:absolute;bottom:-28px;white-space:nowrap;font-size:9px;font-weight:900;letter-spacing:.12em;color:#dff7e6}
