@@ -1,744 +1,230 @@
 'use client';
 
-import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import Intro from './Intro';
+import { useMemo, useState } from 'react';
+import AnimatedRules from './AnimatedRules';
+import IntroCinematic from './IntroCinematic';
+import styles from './home.module.css';
+
+const cardImage = (id: number) => `/images/cards/${String(id).padStart(2, '0')}.webp`;
+
+const faqs = [
+  {
+    question: 'What is Squad22?',
+    answer: 'Squad22 is an online football strategy card game about building a formation, controlling the shared Open Pile and deciding when to open positions for the whole table.',
+  },
+  {
+    question: 'How does a position open?',
+    answer: 'A Position Pair opens and completes one position in your squad. A Trait Triple opens three different positions globally, so every player can start those positions with one matching-position card.',
+  },
+  {
+    question: 'Why does a Trait Triple change the game?',
+    answer: 'Because the three positions become available to everyone. Your triple accelerates your own squad, but it can also give an opponent a one-card route into those same positions on their side.',
+  },
+  {
+    question: 'What is available now?',
+    answer: 'The cinematic introduction, animated rules and playable tactical demo are available now. The complete online match engine is the next product milestone before payments are activated.',
+  },
+];
 
 export default function Home() {
-  const [username, setUsername] = useState('');
-  const [activeTab, setActiveTab] = useState('intro');
-  // Plays on every visit, per design. Intro self-skips for reduced-motion users.
-  const [showIntro, setShowIntro] = useState(true);
+  const [squadName, setSquadName] = useState('');
+  const playerName = useMemo(() => squadName.trim() || 'Player', [squadName]);
+  const demoHref = `/game?mode=ai&player=${encodeURIComponent(playerName)}`;
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: { '@type': 'Answer', text: item.answer },
+    })),
+  };
 
-  if (showIntro) return <Intro onDone={() => setShowIntro(false)} />;
+  const replayIntro = () => window.dispatchEvent(new Event('squad22:replay-intro'));
 
   return (
-    <main style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f1c32 0%, #1a3a52 50%, #0f2847 100%)' }}>
-      {/* TAB NAVIGATION */}
-      <section style={{
-        background: 'rgba(255,255,255,0.05)',
-        padding: '20px',
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '20px',
-        borderBottom: '2px solid rgba(61, 155, 224, 0.3)',
-        backdropFilter: 'blur(10px)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100
-      }}>
-        <button
-          onClick={() => setActiveTab('intro')}
-          className="animate-slide-in-down"
-          style={{
-            padding: '12px 30px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            background: activeTab === 'intro' ? '#3d9be0' : 'rgba(61, 155, 224, 0.2)',
-            color: activeTab === 'intro' ? '#000' : '#3d9be0',
-            border: '2px solid #3d9be0',
-            borderRadius: '25px',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease',
-            textTransform: 'uppercase',
-            letterSpacing: '1px'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          🎮 What is Squad22?
-        </button>
+    <main className={styles.page}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <IntroCinematic />
 
-        <button
-          onClick={() => setActiveTab('rules')}
-          className="animate-slide-in-down"
-          style={{
-            padding: '12px 30px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            background: activeTab === 'rules' ? '#3d9be0' : 'rgba(61, 155, 224, 0.2)',
-            color: activeTab === 'rules' ? '#000' : '#3d9be0',
-            border: '2px solid #3d9be0',
-            borderRadius: '25px',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease',
-            textTransform: 'uppercase',
-            letterSpacing: '1px'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          📋 How to Play
-        </button>
+      <header className={styles.navShell}>
+        <nav className={styles.nav} aria-label="Primary navigation">
+          <a href="#top" className={styles.brand} aria-label="Squad22 home">
+            <Image src="/images/logo.webp" alt="Squad22" width={44} height={44} priority />
+            <span>SQUAD22</span>
+          </a>
+          <div className={styles.navLinks}>
+            <a href="#rules">How it plays</a>
+            <a href="#modes">Game modes</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#physical">Physical</a>
+          </div>
+          <div className={styles.navActions}>
+            <button type="button" onClick={replayIntro}>Watch intro</button>
+            <Link href={demoHref}>Play free</Link>
+          </div>
+        </nav>
+      </header>
 
-        <button
-          onClick={() => setActiveTab('cards')}
-          className="animate-slide-in-down"
-          style={{
-            padding: '12px 30px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            background: activeTab === 'cards' ? '#3d9be0' : 'rgba(61, 155, 224, 0.2)',
-            color: activeTab === 'cards' ? '#000' : '#3d9be0',
-            border: '2px solid #3d9be0',
-            borderRadius: '25px',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease',
-            textTransform: 'uppercase',
-            letterSpacing: '1px'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          🎨 Card System
-        </button>
-      </section>
+      <section id="top" className={styles.hero}>
+        <div className={styles.pitchWorld} aria-hidden="true">
+          <span className={styles.halfway} />
+          <span className={styles.centreCircle} />
+          <span className={styles.penaltyLeft} />
+          <span className={styles.penaltyRight} />
+        </div>
+        <div className={styles.floodlightLeft} aria-hidden="true" />
+        <div className={styles.floodlightRight} aria-hidden="true" />
+        <div className={styles.big22} aria-hidden="true">22</div>
 
-      {/* CONTENT SECTIONS */}
-      <section style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
-
-        {/* INTRO TAB */}
-        {activeTab === 'intro' && (
-          <div className="animate-fade-in" style={{
-            background: 'rgba(255,255,255,0.95)',
-            borderRadius: '20px',
-            padding: '50px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-            backdropFilter: 'blur(10px)'
-          }}>
-            <h2 style={{
-              fontSize: '42px',
-              color: '#162638',
-              marginBottom: '30px',
-              textAlign: 'center',
-              fontWeight: '900'
-            }}>
-              🎮 What is Squad22?
-            </h2>
-
-            <p style={{
-              fontSize: '18px',
-              lineHeight: '1.8',
-              color: '#333',
-              marginBottom: '30px',
-              textAlign: 'center'
-            }}>
-              Squad22 is a <strong>strategic card game</strong> where you become a football manager. Build your perfect squad by strategically playing player cards to earn points and reach 300 to win!
+        <div className={styles.heroInner}>
+          <div className={styles.heroCopy}>
+            <p className={styles.eyebrow}>THE FOOTBALL CARD BATTLE</p>
+            <h1>Build the XI.<br /><span>Own the open.</span></h1>
+            <p className={styles.heroLead}>
+              Build your formation, control the Open Pile and decide when to change the whole table. A Trait Triple can accelerate your squad — and unlock the same positions for everyone else.
             </p>
-
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '25px',
-              marginTop: '40px'
-            }}>
-              {[
-                { emoji: '🧤', title: 'Goalkeeper', desc: 'Position 1 — last line of defence' },
-                { emoji: '🛡️', title: 'Defenders', desc: 'Positions 2-5 — your back four' },
-                { emoji: '🎯', title: 'Midfielders', desc: 'Positions 6, 7, 8 & 11 — control the game' },
-                { emoji: '⚡', title: 'Strikers', desc: 'Positions 9 & 10 — attack and score' }
-              ].map((pos, idx) => (
-                <div
-                  key={idx}
-                  className="stagger-item"
-                  style={{
-                    background: 'linear-gradient(135deg, #f0f0f0 0%, #ffffff 100%)',
-                    padding: '25px',
-                    borderRadius: '15px',
-                    textAlign: 'center',
-                    border: '3px solid #162638',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
-                  onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                >
-                  <div style={{ fontSize: '48px', marginBottom: '15px' }}>{pos.emoji}</div>
-                  <h3 style={{ color: '#162638', marginBottom: '8px', fontSize: '18px' }}>
-                    {pos.title}
-                  </h3>
-                  <p style={{ fontSize: '13px', color: '#666' }}>{pos.desc}</p>
-                </div>
-              ))}
+            <div className={styles.heroActions}>
+              <Link href={demoHref} className={styles.primaryCta}>Play free demo <span>→</span></Link>
+              <a href="#rules" className={styles.secondaryCta}>See the 3 moves</a>
             </div>
-
-            <div style={{
-              marginTop: '50px',
-              background: 'linear-gradient(135deg, rgba(61, 155, 224, 0.1) 0%, rgba(61, 155, 224, 0.05) 100%)',
-              padding: '30px',
-              borderRadius: '15px',
-              borderLeft: '5px solid #3d9be0'
-            }}>
-              <h3 style={{ color: '#162638', marginBottom: '15px', fontSize: '20px' }}>
-                ✨ Why Squad22?
-              </h3>
-              <ul style={{ fontSize: '16px', color: '#333', lineHeight: '2', marginLeft: '20px' }}>
-                <li>⚡ Quick to learn, deep strategy to master</li>
-                <li>🏆 Every card matters - no filler</li>
-                <li>🎯 Perfect for football & strategy game fans</li>
-                <li>👥 Play vs AI or challenge friends</li>
-                <li>🔥 Dynamic gameplay with combos & synergies</li>
-              </ul>
+            <div className={styles.heroProof}>
+              <div><strong>58</strong><span>cards</span></div>
+              <div><strong>22 + 3</strong><span>full squad</span></div>
+              <div><strong>2</strong><span>players</span></div>
+              <div><strong>30 sec</strong><span>to understand</span></div>
             </div>
           </div>
-        )}
 
-        {/* RULES TAB */}
-        {activeTab === 'rules' && (
-          <div className="animate-fade-in" style={{
-            background: 'rgba(255,255,255,0.95)',
-            borderRadius: '20px',
-            padding: '50px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.4)'
-          }}>
-            <h2 style={{
-              fontSize: '42px',
-              color: '#162638',
-              marginBottom: '40px',
-              textAlign: 'center',
-              fontWeight: '900'
-            }}>
-              📋 How to Play
-            </h2>
-
-            {/* Game Flow */}
-            <div style={{ marginBottom: '50px' }}>
-              <h3 style={{
-                fontSize: '28px',
-                color: '#162638',
-                marginBottom: '30px',
-                textAlign: 'center'
-              }}>
-                Your Turn (3 Phases)
-              </h3>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                gap: '20px'
-              }}>
-                {[
-                  {
-                    phase: 'DRAW',
-                    emoji: '📥',
-                    desc: 'Draw 1 card from your deck',
-                    color: '#4ecdc4'
-                  },
-                  {
-                    phase: 'PLAY',
-                    emoji: '🎯',
-                    desc: 'Play as many legal card combinations as possible',
-                    color: '#ffd93d'
-                  },
-                  {
-                    phase: 'DISCARD',
-                    emoji: '📤',
-                    desc: 'Discard 1 card to end your turn',
-                    color: '#ff6b6b'
-                  }
-                ].map((step, idx) => (
-                  <div
-                    key={idx}
-                    className="stagger-item"
-                    style={{
-                      background: `linear-gradient(135deg, ${step.color}20 0%, ${step.color}40 100%)`,
-                      padding: '30px',
-                      borderRadius: '15px',
-                      border: `3px solid ${step.color}`,
-                      textAlign: 'center',
-                      position: 'relative',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    <div style={{
-                      fontSize: '56px',
-                      marginBottom: '15px'
-                    }}>
-                      {step.emoji}
-                    </div>
-                    <h4 style={{
-                      fontSize: '22px',
-                      fontWeight: 'bold',
-                      color: '#162638',
-                      marginBottom: '10px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '2px'
-                    }}>
-                      {step.phase}
-                    </h4>
-                    <p style={{
-                      fontSize: '15px',
-                      color: '#333',
-                      lineHeight: '1.6'
-                    }}>
-                      {step.desc}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Playing Cards */}
-            <div style={{
-              background: '#f9f9f9',
-              padding: '35px',
-              borderRadius: '15px',
-              borderLeft: '5px solid #1f3a56',
-              marginBottom: '40px'
-            }}>
-              <h3 style={{
-                fontSize: '26px',
-                color: '#162638',
-                marginBottom: '25px'
-              }}>
-                💎 How to Score Points
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-                <div>
-                  <h4 style={{
-                    fontSize: '18px',
-                    color: '#1f3a56',
-                    marginBottom: '12px',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <span style={{ fontSize: '24px' }}>👥</span>
-                    Position Pair
-                  </h4>
-                  <p style={{
-                    fontSize: '15px',
-                    color: '#333',
-                    lineHeight: '1.6',
-                    marginBottom: '12px'
-                  }}>
-                    Play 2 cards with the <strong>same position</strong> (e.g., two Striker cards)
-                  </p>
-                  <div style={{
-                    background: 'white',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    textAlign: 'center',
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    color: '#3d9be0'
-                  }}>
-                    +10 Points
-                  </div>
-                </div>
-
-                <div>
-                  <h4 style={{
-                    fontSize: '18px',
-                    color: '#1f3a56',
-                    marginBottom: '12px',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <span style={{ fontSize: '24px' }}>🎨</span>
-                    Trait Triple
-                  </h4>
-                  <p style={{
-                    fontSize: '15px',
-                    color: '#333',
-                    lineHeight: '1.6',
-                    marginBottom: '12px'
-                  }}>
-                    Play 3 cards with the <strong>same trait</strong> but in <strong>different positions</strong>
-                  </p>
-                  <div style={{
-                    background: 'white',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    textAlign: 'center',
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    color: '#3d9be0'
-                  }}>
-                    +5 Points
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Win Condition */}
-            <div style={{
-              background: 'linear-gradient(135deg, #3d9be0 0%, #2f7ec2 100%)',
-              padding: '35px',
-              borderRadius: '15px',
-              textAlign: 'center',
-              color: '#000'
-            }}>
-              <h3 style={{
-                fontSize: '28px',
-                fontWeight: 'bold',
-                marginBottom: '15px'
-              }}>
-                🏆 Win Condition
-              </h3>
-              <p style={{
-                fontSize: '20px',
-                fontWeight: 'bold',
-                margin: '0'
-              }}>
-                First player to reach <strong>300 points</strong> wins the match!
-              </p>
+          <div className={styles.heroVisual} aria-label="Squad22 cards on a football pitch">
+            <div className={styles.cardShadow} />
+            <div className={`${styles.heroCard} ${styles.cardBack}`}><Image src="/images/card-back.webp" alt="Squad22 card back" width={260} height={364} priority /></div>
+            <div className={`${styles.heroCard} ${styles.cardLeft}`}><Image src={cardImage(2)} alt="Squad22 player card" width={260} height={369} priority /></div>
+            <div className={`${styles.heroCard} ${styles.cardRight}`}><Image src={cardImage(10)} alt="Squad22 player card" width={260} height={369} priority /></div>
+            <div className={styles.matchBug}>
+              <span>LIVE TACTICAL MOMENT</span>
+              <div><strong>GLOBAL OPEN</strong><b>1 · 3 · 9</b></div>
+              <div><strong>NEXT MOVE</strong><b>YOURS</b></div>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* CARD SYSTEM TAB */}
-        {activeTab === 'cards' && (
-          <div className="animate-fade-in" style={{
-            background: 'rgba(255,255,255,0.95)',
-            borderRadius: '20px',
-            padding: '50px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.4)'
-          }}>
-            <h2 style={{
-              fontSize: '42px',
-              color: '#162638',
-              marginBottom: '40px',
-              textAlign: 'center',
-              fontWeight: '900'
-            }}>
-              🎨 Card System & Traits
-            </h2>
-
-            <p style={{
-              fontSize: '18px',
-              color: '#333',
-              marginBottom: '40px',
-              textAlign: 'center',
-              lineHeight: '1.8'
-            }}>
-              Each card has two key attributes: <strong>Position</strong> (GK, DEF, MID, STR) and <strong>Trait</strong> (Red, Blue, Yellow, Green). Build combos by matching positions or traits!
-            </p>
-
-            {/* Card Traits */}
-            <div style={{
-              marginBottom: '50px'
-            }}>
-              <h3 style={{
-                fontSize: '28px',
-                color: '#162638',
-                marginBottom: '30px',
-                textAlign: 'center'
-              }}>
-                🎯 The 4 Traits
-              </h3>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '20px'
-              }}>
-                {[
-                  { name: 'Red', color: '#ff6b6b', icon: '🔴' },
-                  { name: 'Blue', color: '#4ecdc4', icon: '🔵' },
-                  { name: 'Yellow', color: '#ffd93d', icon: '🟡' },
-                  { name: 'Green', color: '#6bcf7f', icon: '🟢' }
-                ].map((trait, idx) => (
-                  <div
-                    key={idx}
-                    className="stagger-item"
-                    style={{
-                      background: `${trait.color}20`,
-                      padding: '30px',
-                      borderRadius: '15px',
-                      border: `3px solid ${trait.color}`,
-                      textAlign: 'center'
-                    }}
-                  >
-                    <div style={{ fontSize: '48px', marginBottom: '15px' }}>
-                      {trait.icon}
-                    </div>
-                    <h4 style={{
-                      fontSize: '22px',
-                      fontWeight: 'bold',
-                      color: trait.color,
-                      marginBottom: '8px'
-                    }}>
-                      {trait.name} Trait
-                    </h4>
-                    <p style={{
-                      fontSize: '14px',
-                      color: '#333'
-                    }}>
-                      Combine with 2 other cards of same trait in different positions for +5 points
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Card Types */}
-            <div style={{
-              background: '#f9f9f9',
-              padding: '35px',
-              borderRadius: '15px',
-              borderLeft: '5px solid #1f3a56'
-            }}>
-              <h3 style={{
-                fontSize: '28px',
-                color: '#162638',
-                marginBottom: '25px'
-              }}>
-                📦 Card Types in the Deck
-              </h3>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '20px'
-              }}>
-                <div style={{
-                  background: 'white',
-                  padding: '20px',
-                  borderRadius: '10px',
-                  borderLeft: '4px solid #FFD700'
-                }}>
-                  <h4 style={{ color: '#162638', marginBottom: '8px', fontSize: '16px' }}>
-                    54 Player Cards
-                  </h4>
-                  <p style={{ fontSize: '14px', color: '#666' }}>
-                    11 positions × 4 positions (1 GK, 3 DEF, 4 MID, 3 STR)
-                  </p>
-                </div>
-
-                <div style={{
-                  background: 'white',
-                  padding: '20px',
-                  borderRadius: '10px',
-                  borderLeft: '4px solid #FF6B6B'
-                }}>
-                  <h4 style={{ color: '#162638', marginBottom: '8px', fontSize: '16px' }}>
-                    4 Staff Cards
-                  </h4>
-                  <p style={{ fontSize: '14px', color: '#666' }}>
-                    Special utility cards with unique effects
-                  </p>
-                </div>
-              </div>
-
-              <div style={{
-                marginTop: '25px',
-                padding: '20px',
-                background: 'white',
-                borderRadius: '10px',
-                borderLeft: '4px solid #4ECDC4',
-                fontSize: '14px',
-                color: '#666',
-                lineHeight: '1.8'
-              }}>
-                <strong>💡 Pro Tip:</strong> Look for cards with matching traits to create powerful Trait Triples. The more you understand the synergies, the better your strategic decisions!
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* PLAY SECTION */}
-      <section style={{
-        maxWidth: '600px',
-        margin: '60px auto',
-        padding: '0 20px 60px',
-        animation: 'slideInUp 1s ease-out 0.6s both'
-      }}>
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(61, 155, 224, 0.1) 0%, rgba(61, 155, 224, 0.05) 100%)',
-          borderRadius: '25px',
-          padding: '50px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-          border: '3px solid rgba(61, 155, 224, 0.5)',
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-          {/* Background glow */}
-          <div style={{
-            position: 'absolute',
-            top: '-50px',
-            right: '-50px',
-            width: '200px',
-            height: '200px',
-            background: 'radial-gradient(circle, rgba(61, 155, 224, 0.3) 0%, transparent 70%)',
-            borderRadius: '50%'
-          }} />
-
-          <h2 style={{
-            color: '#3d9be0',
-            marginBottom: '20px',
-            textAlign: 'center',
-            fontSize: '36px',
-            fontWeight: '900',
-            textShadow: '0 0 20px rgba(61, 155, 224, 0.5)',
-            position: 'relative',
-            zIndex: 2
-          }}>
-            ⚽ Start Your Journey
-          </h2>
-
-          <p style={{
-            fontSize: '16px',
-            color: '#3d9be0',
-            marginBottom: '30px',
-            textAlign: 'center',
-            fontStyle: 'italic',
-            position: 'relative',
-            zIndex: 2
-          }}>
-            Enter your squad name and choose your opponent
-          </p>
-
-          <div style={{ marginBottom: '25px', position: 'relative', zIndex: 2 }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '10px',
-              color: '#3d9be0',
-              fontWeight: 'bold',
-              fontSize: '16px'
-            }}>
-              Your Squad Name:
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g., Manchester United, Liverpool, City Stars..."
-              style={{
-                width: '100%',
-                padding: '15px',
-                borderRadius: '12px',
-                border: '3px solid #3d9be0',
-                fontSize: '16px',
-                boxSizing: 'border-box',
-                fontWeight: 'bold',
-                background: '#fff',
-                color: '#162638',
-                transition: 'all 0.3s ease'
-              }}
-              onFocus={(e) => e.currentTarget.style.boxShadow = '0 0 20px rgba(61, 155, 224, 0.5)'}
-              onBlur={(e) => e.currentTarget.style.boxShadow = 'none'}
-            />
-          </div>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '15px',
-            position: 'relative',
-            zIndex: 2
-          }}>
-            <Link href={`/game?mode=ai&player=${encodeURIComponent(username)}`}>
-              <button
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  fontSize: '16px',
-                  background: username ? '#3d9be0' : 'rgba(61, 155, 224, 0.3)',
-                  color: username ? '#000' : '#666',
-                  border: 'none',
-                  borderRadius: '12px',
-                  cursor: username ? 'pointer' : 'not-allowed',
-                  transition: 'all 0.3s ease',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  fontWeight: '900',
-                  boxShadow: username ? '0 0 20px rgba(61, 155, 224, 0.5)' : 'none'
-                }}
-                disabled={!username}
-                onMouseOver={(e) => username && (e.currentTarget.style.transform = 'scale(1.05)')}
-                onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-              >
-                🤖 vs AI
-              </button>
-            </Link>
-
-            <Link href={`/game?mode=multiplayer&player=${encodeURIComponent(username)}`}>
-              <button
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  fontSize: '16px',
-                  background: username ? 'linear-gradient(135deg, #ff6b6b, #ff5252)' : 'rgba(255, 107, 107, 0.3)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '12px',
-                  cursor: username ? 'pointer' : 'not-allowed',
-                  transition: 'all 0.3s ease',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  fontWeight: '900',
-                  boxShadow: username ? '0 0 20px rgba(255, 107, 107, 0.5)' : 'none'
-                }}
-                disabled={!username}
-                onMouseOver={(e) => username && (e.currentTarget.style.transform = 'scale(1.05)')}
-                onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-              >
-                👥 Multiplayer
-              </button>
-            </Link>
-          </div>
-
-          <p style={{
-            fontSize: '13px',
-            color: '#3d9be0',
-            marginTop: '20px',
-            textAlign: 'center',
-            position: 'relative',
-            zIndex: 2,
-            opacity: 0.8
-          }}>
-            💡 Start with "vs AI" to learn. Challenge friends in Multiplayer!
-          </p>
+        <div className={styles.heroTicker} aria-hidden="true">
+          <span>PAIR = COMPLETE</span><i>•</i><span>TRIPLE = GLOBAL</span><i>•</i><span>OPEN PILE = PRESSURE</span><i>•</i><span>READ THE TABLE</span>
         </div>
       </section>
 
-      {/* FOOTER TIPS */}
-      <section style={{
-        background: 'rgba(61, 155, 224, 0.05)',
-        borderTop: '2px solid rgba(61, 155, 224, 0.3)',
-        padding: '40px 20px',
-        textAlign: 'center'
-      }}>
-        <h3 style={{
-          color: '#3d9be0',
-          marginBottom: '20px',
-          fontSize: '20px',
-          fontWeight: 'bold'
-        }}>
-          ✨ Key Tips to Win
-        </h3>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '20px',
-          maxWidth: '1000px',
-          margin: '0 auto'
-        }}>
-          {[
-            { emoji: '🎯', tip: 'Master position pairs for consistent scoring' },
-            { emoji: '🎨', tip: 'Build trait triples for maximum efficiency' },
-            { emoji: '⏰', tip: 'Timing when to draw from the Open Pile is crucial' },
-            { emoji: '🧠', tip: 'Watch what opponents play to predict their strategy' }
-          ].map((item, idx) => (
-            <div
-              key={idx}
-              className="stagger-item"
-              style={{
-                fontSize: '14px',
-                color: '#3d9be0'
-              }}
-            >
-              <div style={{ fontSize: '28px', marginBottom: '8px' }}>{item.emoji}</div>
-              {item.tip}
-            </div>
-          ))}
+      <section id="rules" className={styles.rulesWrap}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.eyebrow}>ONE MINUTE FROM “WHAT?” TO “ONE MORE TURN.”</p>
+            <h2>See the move.<br />Feel the consequence.</h2>
+          </div>
+          <p>Squad22 should not need a lecture. These three moments explain the core tension: complete one position, open three globally, then decide who benefits from that new space first.</p>
+        </div>
+        <AnimatedRules />
+      </section>
+
+      <section id="modes" className={styles.modesSection}>
+        <div className={styles.modesTop}>
+          <p className={styles.eyebrow}>PLAY SQUAD22</p>
+          <h2>Start with the decision.<br />Grow into the match.</h2>
+        </div>
+        <div className={styles.modeGrid}>
+          <article className={`${styles.modeCard} ${styles.modeLive}`}>
+            <span className={styles.modeStatus}>PLAYABLE NOW</span>
+            <div className={styles.modeNumber}>01</div>
+            <h3>Tactical Demo</h3>
+            <p>Three real decisions. No registration. Learn the risk/reward system by actually choosing cards.</p>
+            <Link href={demoHref}>Play free <span>→</span></Link>
+          </article>
+          <article className={styles.modeCard}>
+            <span className={styles.modeStatus}>NEXT PRODUCT MILESTONE</span>
+            <div className={styles.modeNumber}>02</div>
+            <h3>Full Online Match</h3>
+            <p>Complete deck, draw/open piles, full rounds, scoring, AI opponent and match targets. This is the paid core product before checkout goes live.</p>
+            <span className={styles.modePending}>Engine in build</span>
+          </article>
+          <article className={styles.modeCard}>
+            <span className={styles.modeStatus}>AFTER SOLO VALIDATION</span>
+            <div className={styles.modeNumber}>03</div>
+            <h3>Head-to-Head</h3>
+            <p>Play another person with the same full ruleset once the solo match proves retention and demand.</p>
+            <span className={styles.modePending}>Multiplayer later</span>
+          </article>
         </div>
       </section>
+
+      <section id="pricing" className={styles.pricingSection}>
+        <div className={styles.pricingIntro}>
+          <p className={styles.eyebrow}>SIMPLE FROM DAY ONE</p>
+          <h2>No packs. No subscription treadmill.</h2>
+          <p>The launch model is deliberately simple: learn free, then unlock the complete online game once. Payments stay disabled until the full match is finished and tested.</p>
+        </div>
+        <div className={styles.priceGrid}>
+          <article>
+            <span>TACTICAL DEMO</span>
+            <strong>FREE</strong>
+            <p>Cinematic, animated rules and playable tactical decisions.</p>
+            <Link href={demoHref}>Play now</Link>
+          </article>
+          <article className={styles.priceFeatured}>
+            <span>FULL ONLINE GAME</span>
+            <strong>$14.99 <small>one-time launch price</small></strong>
+            <p>Launch price. Pay once, play forever. Full match versus AI first; multiplayer can follow after validation.</p>
+            <button type="button" disabled>Checkout activates after full-game QA</button>
+          </article>
+          <article>
+            <span>PHYSICAL EDITION</span>
+            <strong>$24.99<small> + shipping</small></strong>
+            <p>Planned print-on-demand edition. No inventory commitment before demand is proven.</p>
+            <button type="button" disabled>Physical drop later</button>
+          </article>
+        </div>
+      </section>
+
+      <section id="physical" className={styles.physicalSection}>
+        <div className={styles.physicalVisual}>
+          <div className={`${styles.physicalCard} ${styles.physicalOne}`}><Image src={cardImage(1)} alt="Squad22 physical card" width={220} height={312} /></div>
+          <div className={`${styles.physicalCard} ${styles.physicalTwo}`}><Image src={cardImage(34)} alt="Squad22 physical card" width={220} height={312} /></div>
+          <div className={`${styles.physicalCard} ${styles.physicalThree}`}><Image src="/images/card-back.webp" alt="Squad22 physical card back" width={220} height={308} /></div>
+        </div>
+        <div className={styles.physicalCopy}>
+          <p className={styles.eyebrow}>WHEN DIGITAL DEMAND EARNS IT</p>
+          <h2>The same tension.<br />On the table.</h2>
+          <p>The physical deck comes after the online game proves demand. The intended fulfillment model is print-on-demand, so there is no need to finance boxes of inventory before players ask for them.</p>
+          <div className={styles.physicalFacts}><span>No inventory</span><span>Print on demand</span><span>Same 58-card system</span></div>
+        </div>
+      </section>
+
+      <section className={styles.playSection}>
+        <div className={styles.playPanel}>
+          <div>
+            <p className={styles.eyebrow}>YOUR FIRST KICK</p>
+            <h2>Stop reading.<br />Make the move.</h2>
+          </div>
+          <div className={styles.playForm}>
+            <label htmlFor="squad-name">Squad name <span>optional</span></label>
+            <input id="squad-name" type="text" value={squadName} onChange={(event) => setSquadName(event.target.value)} placeholder="Northside FC" maxLength={32} autoComplete="off" />
+            <Link href={demoHref}>Enter the pitch <span>→</span></Link>
+            <small>No account. No payment. Immediate play.</small>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.faqSection}>
+        <div className={styles.faqTitle}><p className={styles.eyebrow}>QUICK ANSWERS</p><h2>Before kickoff.</h2></div>
+        <div className={styles.faqGrid}>{faqs.map((item) => <article key={item.question}><h3>{item.question}</h3><p>{item.answer}</p></article>)}</div>
+      </section>
+
+      <footer className={styles.footer}>
+        <div className={styles.footerBrand}><Image src="/images/logo.webp" alt="" width={42} height={42} /><span>SQUAD22</span></div>
+        <p>Football strategy. Card-table nerve.</p>
+        <div className={styles.footerLinks}><Link href="/imprint">Imprint</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></div>
+        <span>© {new Date().getFullYear()} Squad22</span>
+      </footer>
     </main>
   );
 }
