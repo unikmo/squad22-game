@@ -43,6 +43,8 @@ export interface MatchState {
   globalOpenPositions: number[];
   drawnThisTurn: boolean;
   selectedOpenIndex: number | null;
+  /** When taking from the Open Pile, this chosen card must be used in the first play. */
+  requiredFirstPlayCardId?: number | null;
   winner: 0 | 1 | null;
   roundReason: string | null;
   events: MatchEvent[];
@@ -168,6 +170,7 @@ export function createMatch(options?: {
     globalOpenPositions: [],
     drawnThisTurn: false,
     selectedOpenIndex: null,
+    requiredFirstPlayCardId: null,
     winner: null,
     roundReason: null,
     events: [],
@@ -244,12 +247,16 @@ export function legalMoves(state: MatchState, playerIndex = state.currentPlayer)
   }
 
   const seen = new Set<string>();
-  return moves.filter((move) => {
+  const deduplicated = moves.filter((move) => {
     const key = moveKey(move);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+
+  const required = playerIndex === state.currentPlayer ? state.requiredFirstPlayCardId : null;
+  if (!required) return deduplicated;
+  return deduplicated.filter((move) => move.cardIds.includes(required));
 }
 
 export function openPileTakeOptions(state: MatchState, playerIndex = state.currentPlayer) {
@@ -259,6 +266,7 @@ export function openPileTakeOptions(state: MatchState, playerIndex = state.curre
     const cardId = state.openPile[index];
     const takeIds = state.openPile.slice(index);
     const simulated = clone(state);
+    simulated.requiredFirstPlayCardId = null;
     simulated.players[playerIndex].hand.push(...takeIds);
     const moves = legalMoves(simulated, playerIndex).filter((move) => move.cardIds.includes(cardId));
     if (moves.length) options.push({ index, cardId, takeIds, legalMoves: moves });
@@ -280,6 +288,7 @@ export function drawFromPile(input: MatchState): MatchState {
   if (input.phase !== 'draw') throw new Error('Draw is only legal at the start of a turn');
   if (!input.drawPile.length) return endRound(input, 'The Draw Pile ran out.');
   const state = clone(input);
+  state.requiredFirstPlayCardId = null;
   const id = state.drawPile.shift();
   if (!id) return endRound(state, 'The Draw Pile ran out.');
   state.players[state.currentPlayer].hand.push(id);
@@ -310,8 +319,9 @@ export function drawFromOpenPile(input: MatchState, openIndex: number): MatchSta
   state.openPile = state.openPile.slice(0, openIndex);
   state.players[state.currentPlayer].hand.push(...takeIds);
   state.drawnThisTurn = true;
+  state.requiredFirstPlayCardId = option.cardId;
   state.phase = 'play';
-  event(state, state.currentPlayer === 0 ? 'human' : 'ai', `Took ${takeIds.length} card${takeIds.length === 1 ? '' : 's'} from the Open Pile to reach ${getSquad22Card(option.cardId).name}.`);
+  event(state, state.currentPlayer === 0 ? 'human' : 'ai', `Took ${takeIds.length} card${takeIds.length === 1 ? '' : 's'} from the Open Pile to reach ${getSquad22Card(option.cardId).name}. That card must be played first.`);
   state.updatedAt = now();
   return state;
 }
@@ -324,7 +334,12 @@ export function playMove(input: MatchState, requested: Pick<LegalMove, 'type' | 
     && move.cardIds.length === requested.cardIds.length
     && move.cardIds.every((id) => requested.cardIds.includes(id))
   );
-  if (!legal) throw new Error('That combination is not a legal Squad22 move');
+  if (!legal) {
+    if (input.requiredFirstPlayCardId) {
+      throw new Error(`Your first play must use ${getSquad22Card(input.requiredFirstPlayCardId).name}, the card you chose from the Open Pile.`);
+    }
+    throw new Error('That combination is not a legal Squad22 move');
+  }
 
   const state = clone(input);
   const player = state.players[state.currentPlayer];
@@ -355,6 +370,10 @@ export function playMove(input: MatchState, requested: Pick<LegalMove, 'type' | 
     else player.squad.push({ position, cards: [legal.cardIds[0]], openedBy: 'flex' });
   }
 
+  if (state.requiredFirstPlayCardId && legal.cardIds.includes(state.requiredFirstPlayCardId)) {
+    state.requiredFirstPlayCardId = null;
+  }
+
   event(state, state.currentPlayer === 0 ? 'human' : 'ai', legal.type === 'triple'
     ? `${player.name} played a Trait Triple. Positions ${cards.map((card) => card.position).join(', ')} are now globally open.`
     : `${player.name}: ${legal.label}.`);
@@ -364,6 +383,9 @@ export function playMove(input: MatchState, requested: Pick<LegalMove, 'type' | 
 
 export function discardAndPass(input: MatchState, cardId: number): MatchState {
   if (input.phase !== 'play') throw new Error('Discard comes after the play phase');
+  if (input.requiredFirstPlayCardId) {
+    throw new Error(`Play ${getSquad22Card(input.requiredFirstPlayCardId).name} first — you took it from the Open Pile because it was immediately playable.`);
+  }
   const state = clone(input);
   const player = state.players[state.currentPlayer];
   if (!player.hand.includes(cardId)) throw new Error('Discard card is not in hand');
@@ -379,12 +401,14 @@ export function passTurn(input: MatchState): MatchState {
   state.phase = 'draw';
   state.drawnThisTurn = false;
   state.selectedOpenIndex = null;
+  state.requiredFirstPlayCardId = null;
   state.updatedAt = now();
   return state;
 }
 
 export function endRound(input: MatchState, reason: string): MatchState {
   const state = clone(input);
+  state.requiredFirstPlayCardId = null;
   const lines = state.players.map(calculateRoundScore) as [RoundScoreLine, RoundScoreLine];
   state.players.forEach((player, index) => {
     player.roundScore = lines[index].net;
@@ -433,6 +457,8 @@ export function startNextRound(input: MatchState, random: () => number = Math.ra
   state.currentPlayer = state.round % 2 === 1 ? 0 : 1;
   state.phase = 'draw';
   state.drawnThisTurn = false;
+  state.selectedOpenIndex = null;
+  state.requiredFirstPlayCardId = null;
   state.roundReason = null;
   state.winner = null;
   event(state, 'system', `Round ${state.round} begins. ${getSquad22Card(firstOpen).name} starts the Open Pile.`);
