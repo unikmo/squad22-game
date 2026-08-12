@@ -4,10 +4,11 @@
   "description": "Squad22 - Card Game for Rival Football Fans",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "test:rules": "tsc --module commonjs --moduleResolution node --target es2020 --esModuleInterop --skipLibCheck --outDir .qa-build lib/squad22/deck.ts lib/squad22/engine.ts lib/squad22/ai.ts tests/squad22-regression.ts && node .qa-build/tests/squad22-regression.js",
+    "test": "npm run test:rules",
+    "build": "npm run test:rules && next build",
     "start": "next start",
-    "lint": "next lint",
-    "test": "jest"
+    "lint": "next lint"
   },
   "dependencies": {
     "next": "^15.0.0",
