@@ -392,6 +392,9 @@ export function discardAndPass(input: MatchState, cardId: number): MatchState {
   player.hand = removeCards(player.hand, [cardId]);
   state.openPile.push(cardId);
   event(state, state.currentPlayer === 0 ? 'human' : 'ai', `${player.name} discarded ${getSquad22Card(cardId).name}.`);
+  if (player.hand.length === 0) {
+    return endRound(state, `${player.name} emptied their hand.`);
+  }
   return passTurn(state);
 }
 
