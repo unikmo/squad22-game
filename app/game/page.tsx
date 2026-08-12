@@ -1,616 +1,218 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
+import { Suspense, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import {
+  classifyDemoMove,
+  DEMO_DECISION_HAND,
+  DEMO_GLOBAL_HAND,
+  DEMO_OPENING_HAND,
+  type DemoMove,
+} from '@/lib/tacticalDemo';
+import styles from './game.module.css';
 
-// Shared loading shell — also used as the Suspense fallback below.
-function GameLoading({ message = 'Loading…' }: { message?: string }) {
-  return (
-    <main style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0f1c32 0%, #1a3a52 50%, #0f2847 100%)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center'
-    }}>
-      <div style={{ textAlign: 'center', color: '#00ff00' }}>
-        <div style={{
-          fontSize: '48px',
-          marginBottom: '20px',
-          animation: 'pulse 1.5s ease-in-out infinite'
-        }}>
-          ⚽
-        </div>
-        <h1 style={{
-          fontSize: '32px',
-          marginBottom: '10px',
-          fontWeight: 'bold',
-          textShadow: '0 0 20px rgba(0, 255, 0, 0.5)'
-        }}>
-          SQUAD22
-        </h1>
-        <p style={{ fontSize: '18px', color: '#aaa' }}>{message}</p>
-      </div>
-    </main>
-  );
-}
+const cardImage = (id: number) => `/images/cards/${String(id).padStart(2, '0')}.webp`;
 
-// useSearchParams() opts this subtree into client-side rendering, so it must sit
-// inside a Suspense boundary or `next build` fails prerendering /game.
-export default function GamePage() {
-  return (
-    <Suspense fallback={<GameLoading message="Loading game…" />}>
-      <GameContent />
-    </Suspense>
-  );
-}
+type Owner = 'you' | 'opponent';
+type Slot = { position: number; cards: number[]; owner: Owner; started: boolean };
+type StepId = 'opening' | 'global' | 'decision';
 
-function GameContent() {
+type Step = {
+  id: StepId;
+  number: string;
+  kicker: string;
+  title: string;
+  body: string;
+  mission: string;
+  hand: readonly number[];
+  globallyOpenPositions: number[];
+  hint: string;
+  action: string;
+};
+
+const steps: Step[] = [
+  {
+    id: 'opening', number: '01', kicker: 'MAKE THE FIRST CALL',
+    title: 'Your hand has two legal ways to change the pitch.',
+    body: 'A Position Pair completes one position immediately. A Trait Triple opens three positions globally — faster for you, but useful to everyone.',
+    mission: 'Find either legal opening in your hand.', hand: DEMO_OPENING_HAND,
+    globallyOpenPositions: [],
+    hint: 'Look for either two matching position numbers, or three CONTROL cards across different positions.',
+    action: 'Play selected cards',
+  },
+  {
+    id: 'global', number: '02', kicker: 'USE THE GLOBAL OPEN',
+    title: 'The opponent played a Trait Triple. The table changed for you too.',
+    body: 'Positions 1, 3 and 9 are now globally open. You may start one of those positions in your own squad with a single matching-position card.',
+    mission: 'Start one globally-open position in your own squad.', hand: DEMO_GLOBAL_HAND,
+    globallyOpenPositions: [1, 3, 9],
+    hint: 'Cards 1 and 9 match positions that are globally open. Either is legal.',
+    action: 'Use the opening',
+  },
+  {
+    id: 'decision', number: '03', kicker: 'NOW THINK LIKE A MANAGER',
+    title: 'One hand. Three different strategic ideas.',
+    body: 'You can close a position with a Pair, open three positions globally with a Trait Triple, or use an already-open position to start with one card. There is no single scripted answer.',
+    mission: 'Choose the line you would actually play.', hand: DEMO_DECISION_HAND,
+    globallyOpenPositions: [3],
+    hint: 'You have a Position Pair, a CONTROL Trait Triple, and single position-3 cards that can use the global opening.',
+    action: 'Commit to this move',
+  },
+];
+
+function GameShell() {
   const searchParams = useSearchParams();
-  const [gameState, setGameState] = useState<any>(null);
-  const [selectedCards, setSelectedCards] = useState<number[]>([]);
-  const [status, setStatus] = useState('Initializing game...');
-  const [currentPhase, setCurrentPhase] = useState('draw');
-  const [playerName, setPlayerName] = useState('');
+  const rawPlayer = searchParams.get('player')?.trim();
+  const playerName = rawPlayer?.slice(0, 32) || 'Player';
+  const [stepIndex, setStepIndex] = useState(0);
+  const [selected, setSelected] = useState<number[]>([]);
+  const [resolvedMove, setResolvedMove] = useState<DemoMove | null>(null);
+  const [feedback, setFeedback] = useState('');
+  const [hintVisible, setHintVisible] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [history, setHistory] = useState<DemoMove[]>([]);
 
-  useEffect(() => {
-    const mode = searchParams.get('mode') || 'ai';
-    const player = searchParams.get('player') || 'Player';
-    setPlayerName(player);
+  const step = steps[stepIndex];
+  const hand = resolvedMove ? step.hand.filter((id) => !resolvedMove.cards.includes(id)) : [...step.hand];
 
-    // Simulate game initialization
-    setTimeout(() => {
-      setGameState({
-        round: 1,
-        hands: [[{ name: 'Messi', position: 9, trait: 'Red', id: 1 }]],
-        tables: [[], []],
-        scores: [0, 0],
-        targetScore: 300,
-        drawPile: 52,
-        openPile: []
-      });
-      setStatus('Your turn - Draw a card to start');
-      setCurrentPhase('draw');
-    }, 1500);
-  }, [searchParams]);
+  const slots = useMemo<Slot[]>(() => {
+    if (step.id === 'opening') {
+      if (!resolvedMove) return [];
+      if (resolvedMove.type === 'pair') return [{ position: resolvedMove.position ?? 1, cards: resolvedMove.cards, owner: 'you', started: false }];
+      if (resolvedMove.type === 'triple') return [
+        { position: 1, cards: [2], owner: 'you', started: true },
+        { position: 3, cards: [10], owner: 'you', started: true },
+        { position: 9, cards: [34], owner: 'you', started: true },
+      ];
+      return [];
+    }
 
-  if (!gameState) {
-    return <GameLoading message={status} />;
-  }
+    if (step.id === 'global') {
+      const base: Slot[] = [
+        { position: 1, cards: [2], owner: 'opponent', started: true },
+        { position: 3, cards: [10], owner: 'opponent', started: true },
+        { position: 9, cards: [34], owner: 'opponent', started: true },
+      ];
+      if (resolvedMove?.type === 'global-start' && resolvedMove.position) {
+        base.push({ position: resolvedMove.position, cards: resolvedMove.cards, owner: 'you', started: true });
+      }
+      return base;
+    }
 
-  const traitColors: any = {
-    'Red': '#ff6b6b',
-    'Blue': '#4ecdc4',
-    'Yellow': '#ffd93d',
-    'Green': '#6bcf7f'
+    const base: Slot[] = [{ position: 3, cards: [10], owner: 'opponent', started: true }];
+    if (!resolvedMove) return base;
+    if (resolvedMove.type === 'pair') base.push({ position: resolvedMove.position ?? 1, cards: resolvedMove.cards, owner: 'you', started: false });
+    if (resolvedMove.type === 'triple') base.push(
+      { position: 1, cards: [2], owner: 'you', started: true },
+      { position: 3, cards: [10], owner: 'you', started: true },
+      { position: 9, cards: [34], owner: 'you', started: true },
+    );
+    if (resolvedMove.type === 'global-start' && resolvedMove.position) base.push({ position: resolvedMove.position, cards: resolvedMove.cards, owner: 'you', started: true });
+    return base;
+  }, [step.id, resolvedMove]);
+
+  const youSlots = slots.filter((slot) => slot.owner === 'you');
+  const opponentSlots = slots.filter((slot) => slot.owner === 'opponent');
+
+  const toggleCard = (id: number) => {
+    if (resolvedMove || finished) return;
+    setFeedback('');
+    setSelected((current) => current.includes(id) ? current.filter((card) => card !== id) : current.length >= 3 ? [...current.slice(1), id] : [...current, id]);
   };
 
+  const resolveSelection = () => {
+    if (!selected.length || resolvedMove) return;
+    const move = classifyDemoMove(selected, step.globallyOpenPositions);
+    if (!move) {
+      setFeedback(step.id === 'global'
+        ? 'That selection does not use one of the globally-open positions. Read the position numbers again.'
+        : 'That selection is not legal here. Look again for a Pair, a Trait Triple, or a globally-open single-card start.');
+      return;
+    }
+    if (step.id === 'opening' && move.type === 'global-start') {
+      setFeedback('No position is globally open yet. Create an opening first.'); return;
+    }
+    if (step.id === 'global' && move.type !== 'global-start') {
+      setFeedback('This moment is about the global-opening rule. Start one of positions 1, 3 or 9 with a single matching card.'); return;
+    }
+    setResolvedMove(move); setHistory((current) => [...current, move]); setFeedback('');
+  };
+
+  const next = () => {
+    if (!resolvedMove) return;
+    if (stepIndex === steps.length - 1) { setFinished(true); return; }
+    setStepIndex((value) => value + 1); setSelected([]); setResolvedMove(null); setFeedback(''); setHintVisible(false);
+  };
+
+  const restart = () => { setStepIndex(0); setSelected([]); setResolvedMove(null); setFeedback(''); setHintVisible(false); setFinished(false); setHistory([]); };
+
+  if (finished) {
+    const finalChoice = history[history.length - 1];
+    return (
+      <main className={styles.gamePage}>
+        <Topbar stepIndex={steps.length - 1} />
+        <section className={styles.finishWrap}>
+          <div className={styles.finishPanel}>
+            <p className={styles.kicker}>TACTICAL DEMO COMPLETE</p>
+            <h1>Now you know what makes Squad22 different.</h1>
+            <p>A Pair secures your own squad. A Trait Triple changes the opportunity set for the entire table. A global opening can be used by whoever reads it first.</p>
+            {finalChoice && <div className={`${styles.finalChoice} ${styles[`tone_${finalChoice.tone}`]}`}><span>YOUR FINAL LINE</span><strong>{finalChoice.label}</strong><p>{finalChoice.detail}</p></div>}
+            <div className={styles.finishGrid}>
+              <div><strong>SAFE</strong><span>Position Pair</span><small>Open and complete one position in your own squad.</small></div>
+              <div><strong>FAST</strong><span>Trait Triple</span><small>Start three positions and open those same positions for everyone.</small></div>
+              <div><strong>SMART</strong><span>Global Start</span><small>Use a globally-open position to enter your own squad with one matching card.</small></div>
+            </div>
+            <div className={styles.finishActions}><button type="button" onClick={restart} className={styles.primaryAction}>Try a different line</button><Link href="/#rules" className={styles.secondaryAction}>Replay animated rules</Link></div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
-    <main style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0f1c32 0%, #1a3a52 50%, #0f2847 100%)',
-      padding: '20px'
-    }}>
-      {/* HEADER */}
-      <header style={{
-        textAlign: 'center',
-        marginBottom: '30px',
-        animation: 'slideInDown 0.8s ease-out'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          maxWidth: '1200px',
-          margin: '0 auto',
-          marginBottom: '20px'
-        }}>
-          <Link href="/">
-            <button style={{
-              padding: '10px 20px',
-              background: 'rgba(0, 255, 0, 0.2)',
-              color: '#00ff00',
-              border: '2px solid #00ff00',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0, 255, 0, 0.4)'}
-            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0, 255, 0, 0.2)'}
-            >
-              ← Back to Home
-            </button>
-          </Link>
+    <main className={styles.gamePage}>
+      <Topbar stepIndex={stepIndex} />
+      <div className={styles.workspace}>
+        <aside className={styles.coachPanel}>
+          <div className={styles.stepTopline}><span>{step.number}</span><span>{step.kicker}</span></div>
+          <h1>{step.title}</h1><p className={styles.coachBody}>{step.body}</p>
+          <div className={styles.instructionCard}><span>YOUR MOVE</span><strong>{resolvedMove ? resolvedMove.headline : step.mission}</strong><small>{resolvedMove ? resolvedMove.detail : 'Select cards directly from your hand. The game validates the move.'}</small></div>
+          {!resolvedMove && <button type="button" className={styles.hintButton} onClick={() => setHintVisible((value) => !value)}>{hintVisible ? 'Hide hint' : 'Need a hint?'}</button>}
+          {hintVisible && !resolvedMove && <p className={styles.hintText}>{step.hint}</p>}
+          <div className={styles.playerLine}><span>Playing as</span><strong>{playerName}</strong></div>
+        </aside>
 
-          <div>
-            <h1 style={{
-              fontSize: '42px',
-              color: '#00ff00',
-              margin: '0',
-              textShadow: '0 0 30px rgba(0, 255, 0, 0.5)',
-              fontWeight: '900',
-              letterSpacing: '2px'
-            }}>
-              ⚽ SQUAD22
-            </h1>
-          </div>
+        <section className={styles.tableArea} aria-label="Squad22 tactical table">
+          <div className={styles.pitchTexture} aria-hidden="true" />
+          <div className={styles.sideHeader}><div><span className={styles.sideLabel}>OPPONENT</span><strong>Rival XI</strong></div><span className={styles.sideStatus}>{opponentSlots.length ? `${opponentSlots.length} started` : 'Waiting'}</span></div>
+          <div className={styles.slotRow}>{opponentSlots.length ? opponentSlots.map((slot) => <PositionSlot key={`opp-${slot.position}`} slot={slot} />) : <div className={styles.emptyFormation}>Opponent formation waiting</div>}</div>
 
-          <div style={{
-            fontSize: '18px',
-            color: '#00ff00',
-            fontWeight: 'bold'
-          }}>
-            Round {gameState.round}
-          </div>
-        </div>
+          <div className={styles.centreLine}><div className={styles.centreMark}>22</div><div className={styles.centreRule} /><span>{step.globallyOpenPositions.length ? `GLOBAL OPEN · ${step.globallyOpenPositions.join(' · ')}` : 'NO GLOBAL OPENING YET'}</span><div className={styles.centreRule} /></div>
 
-        {/* Score Progress Bar */}
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          background: 'rgba(0, 255, 0, 0.1)',
-          borderRadius: '25px',
-          padding: '20px',
-          border: '2px solid rgba(0, 255, 0, 0.3)'
-        }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '30px',
-            marginBottom: '15px'
-          }}>
-            <div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '10px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                color: '#00ff00'
-              }}>
-                <span>You ({playerName})</span>
-                <span>{gameState.scores[0]} / {gameState.targetScore}</span>
-              </div>
-              <div style={{
-                width: '100%',
-                height: '25px',
-                background: 'rgba(0, 0, 0, 0.5)',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                border: '2px solid #00ff00'
-              }}>
-                <div style={{
-                  height: '100%',
-                  width: `${(gameState.scores[0] / gameState.targetScore) * 100}%`,
-                  background: 'linear-gradient(90deg, #00ff00, #00dd00)',
-                  transition: 'width 0.3s ease',
-                  animation: gameState.scores[0] > 0 ? 'glow 1s ease-in-out' : 'none'
-                }} />
-              </div>
-            </div>
+          <div className={styles.slotRow}>{youSlots.length ? youSlots.map((slot) => <PositionSlot key={`you-${slot.position}-${slot.cards.join('-')}`} slot={slot} />) : <div className={styles.emptyFormation}>Your formation is waiting for a legal move</div>}</div>
+          <div className={styles.sideHeader}><div><span className={styles.sideLabel}>YOU</span><strong>{playerName}</strong></div><span className={styles.sideStatus}>{resolvedMove ? 'Move resolved' : 'Your turn'}</span></div>
+        </section>
+      </div>
 
-            <div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '10px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                color: '#ff6b6b'
-              }}>
-                <span>Opponent (AI)</span>
-                <span>{gameState.scores[1]} / {gameState.targetScore}</span>
-              </div>
-              <div style={{
-                width: '100%',
-                height: '25px',
-                background: 'rgba(0, 0, 0, 0.5)',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                border: '2px solid #ff6b6b'
-              }}>
-                <div style={{
-                  height: '100%',
-                  width: `${(gameState.scores[1] / gameState.targetScore) * 100}%`,
-                  background: 'linear-gradient(90deg, #ff6b6b, #ff5252)',
-                  transition: 'width 0.3s ease'
-                }} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* GAME BOARD */}
-      <section style={{
-        maxWidth: '1200px',
-        margin: '0 auto 40px',
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '20px'
-      }}>
-        {/* YOUR AREA */}
-        <div style={{
-          background: 'rgba(0, 255, 0, 0.08)',
-          borderRadius: '20px',
-          padding: '25px',
-          border: '3px solid rgba(0, 255, 0, 0.4)',
-          animation: 'slideInUp 0.8s ease-out 0.1s both'
-        }}>
-          <h2 style={{
-            color: '#00ff00',
-            marginBottom: '20px',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <span>🖐️ Your Hand</span>
-            <span style={{
-              background: '#00ff00',
-              color: '#000',
-              padding: '5px 12px',
-              borderRadius: '20px',
-              fontSize: '16px',
-              fontWeight: 'bold'
-            }}>
-              {gameState.hands[0]?.length || 0}
-            </span>
-          </h2>
-
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '12px',
-            marginBottom: '20px',
-            minHeight: '150px',
-            background: 'rgba(0, 0, 0, 0.2)',
-            padding: '15px',
-            borderRadius: '12px'
-          }}>
-            {gameState.hands[0]?.map((card: any, idx: number) => (
-              <div
-                key={idx}
-                onClick={() => {
-                  if (selectedCards.includes(idx)) {
-                    setSelectedCards(selectedCards.filter(i => i !== idx));
-                  } else {
-                    setSelectedCards([...selectedCards, idx]);
-                  }
-                }}
-                className={selectedCards.includes(idx) ? 'animate-card-flip' : ''}
-                style={{
-                  cursor: 'pointer',
-                  border: selectedCards.includes(idx) ? '3px solid #00ff00' : '2px solid rgba(0, 255, 0, 0.5)',
-                  padding: '12px',
-                  borderRadius: '10px',
-                  textAlign: 'center',
-                  minWidth: '100px',
-                  transition: 'all 0.3s ease',
-                  transform: selectedCards.includes(idx) ? 'scale(1.08)' : 'scale(1)',
-                  boxShadow: selectedCards.includes(idx) ? '0 0 20px rgba(0, 255, 0, 0.5)' : 'none',
-                  background: selectedCards.includes(idx) ? '#f0fff0' : 'white'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                onMouseOut={(e) => !selectedCards.includes(idx) && (e.currentTarget.style.transform = 'translateY(0)')}
-              >
-                <div style={{ fontWeight: 'bold', marginBottom: '5px', color: '#1a4d2e' }}>
-                  {card.name}
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: '#666',
-                  marginBottom: '5px'
-                }}>
-                  Position {card.position}
-                </div>
-                <div style={{
-                  display: 'inline-block',
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  fontSize: '11px',
-                  fontWeight: 'bold',
-                  color: 'white',
-                  background: traitColors[card.trait] || '#666'
-                }}>
-                  {card.trait}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Deck Info */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '12px',
-            fontSize: '13px',
-            color: '#00ff00',
-            fontWeight: 'bold'
-          }}>
-            <div style={{
-              background: 'rgba(0, 0, 0, 0.3)',
-              padding: '12px',
-              borderRadius: '8px'
-            }}>
-              📥 Draw Pile: {gameState.drawPile} cards
-            </div>
-            <div style={{
-              background: 'rgba(0, 0, 0, 0.3)',
-              padding: '12px',
-              borderRadius: '8px'
-            }}>
-              📤 Open Pile: {gameState.openPile?.length || 0} cards
-            </div>
-          </div>
-        </div>
-
-        {/* YOUR TABLE */}
-        <div style={{
-          background: 'rgba(100, 200, 100, 0.08)',
-          borderRadius: '20px',
-          padding: '25px',
-          border: '3px solid rgba(100, 200, 100, 0.4)',
-          animation: 'slideInUp 0.8s ease-out 0.2s both'
-        }}>
-          <h2 style={{
-            color: '#6bcf7f',
-            marginBottom: '20px',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <span>⚽ Your Pitch</span>
-            <span style={{
-              background: '#6bcf7f',
-              color: '#000',
-              padding: '5px 12px',
-              borderRadius: '20px',
-              fontSize: '16px',
-              fontWeight: 'bold'
-            }}>
-              {gameState.scores[0]} pts
-            </span>
-          </h2>
-
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '12px',
-            minHeight: '150px',
-            background: 'rgba(0, 0, 0, 0.2)',
-            padding: '15px',
-            borderRadius: '12px'
-          }}>
-            {gameState.tables[0]?.length > 0 ? (
-              gameState.tables[0]?.map((card: any, idx: number) => (
-                <div
-                  key={idx}
-                  style={{
-                    background: '#e8f5e9',
-                    border: '2px solid #6bcf7f',
-                    padding: '12px',
-                    borderRadius: '10px',
-                    minWidth: '100px',
-                    textAlign: 'center',
-                    animation: 'slideInUp 0.5s ease-out'
-                  }}
-                >
-                  <div style={{ fontWeight: 'bold', marginBottom: '5px', color: '#1a4d2e' }}>
-                    {card.name}
-                  </div>
-                  <div style={{
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    color: '#00ff00'
-                  }}>
-                    +{card.points} pts
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div style={{
-                width: '100%',
-                textAlign: 'center',
-                color: '#666',
-                fontSize: '14px'
-              }}>
-                No cards played yet. Play cards to start scoring!
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* PHASE INDICATOR & CONTROLS */}
-      <section style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        animation: 'slideInUp 0.8s ease-out 0.3s both'
-      }}>
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '20px',
-          padding: '30px',
-          border: '2px solid rgba(0, 255, 0, 0.3)',
-          backdropFilter: 'blur(10px)'
-        }}>
-          {/* Phase Indicator */}
-          <div style={{
-            marginBottom: '30px',
-            textAlign: 'center'
-          }}>
-            <p style={{
-              fontSize: '14px',
-              color: '#aaa',
-              marginBottom: '15px',
-              textTransform: 'uppercase',
-              letterSpacing: '1px'
-            }}>
-              Current Phase
-            </p>
-
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              gap: '15px',
-              marginBottom: '20px'
-            }}>
-              {['draw', 'play', 'discard'].map((phase) => (
-                <div
-                  key={phase}
-                  style={{
-                    padding: '12px 20px',
-                    borderRadius: '20px',
-                    background: currentPhase === phase ? '#00ff00' : 'rgba(0, 255, 0, 0.2)',
-                    color: currentPhase === phase ? '#000' : '#00ff00',
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase',
-                    transition: 'all 0.3s ease',
-                    border: `2px solid ${currentPhase === phase ? '#00ff00' : 'rgba(0, 255, 0, 0.3)'}`,
-                    boxShadow: currentPhase === phase ? '0 0 20px rgba(0, 255, 0, 0.5)' : 'none'
-                  }}
-                >
-                  {phase === 'draw' && '📥'} {phase === 'play' && '🎯'} {phase === 'discard' && '📤'} {phase.toUpperCase()}
-                </div>
-              ))}
-            </div>
-
-            <p style={{
-              fontSize: '16px',
-              color: '#00ff00',
-              fontWeight: 'bold'
-            }}>
-              {currentPhase === 'draw' && 'Draw a card from the deck or Open Pile'}
-              {currentPhase === 'play' && 'Play your cards to score points'}
-              {currentPhase === 'discard' && 'Discard 1 card to end your turn'}
-            </p>
-          </div>
-
-          {/* Action Buttons */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: '15px'
-          }}>
-            <button
-              style={{
-                padding: '16px',
-                fontSize: '16px',
-                background: currentPhase === 'draw' ? '#4ecdc4' : 'rgba(78, 205, 196, 0.3)',
-                color: currentPhase === 'draw' ? '#000' : '#4ecdc4',
-                border: 'none',
-                borderRadius: '12px',
-                cursor: currentPhase === 'draw' ? 'pointer' : 'not-allowed',
-                transition: 'all 0.3s ease',
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                fontWeight: '900',
-                boxShadow: currentPhase === 'draw' ? '0 0 20px rgba(78, 205, 196, 0.5)' : 'none'
-              }}
-              disabled={currentPhase !== 'draw'}
-              onClick={() => setCurrentPhase('play')}
-            >
-              📥 Draw Card
-            </button>
-
-            <button
-              style={{
-                padding: '16px',
-                fontSize: '16px',
-                background: currentPhase === 'play' && selectedCards.length > 0 ? '#ffd93d' : 'rgba(255, 217, 61, 0.3)',
-                color: currentPhase === 'play' && selectedCards.length > 0 ? '#000' : '#ffd93d',
-                border: 'none',
-                borderRadius: '12px',
-                cursor: currentPhase === 'play' && selectedCards.length > 0 ? 'pointer' : 'not-allowed',
-                transition: 'all 0.3s ease',
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                fontWeight: '900',
-                boxShadow: currentPhase === 'play' && selectedCards.length > 0 ? '0 0 20px rgba(255, 217, 61, 0.5)' : 'none'
-              }}
-              disabled={currentPhase !== 'play' || selectedCards.length === 0}
-              onClick={() => setCurrentPhase('discard')}
-            >
-              🎯 Play Cards ({selectedCards.length})
-            </button>
-
-            <button
-              style={{
-                padding: '16px',
-                fontSize: '16px',
-                background: currentPhase === 'discard' ? '#ff6b6b' : 'rgba(255, 107, 107, 0.3)',
-                color: currentPhase === 'discard' ? '#fff' : '#ff6b6b',
-                border: 'none',
-                borderRadius: '12px',
-                cursor: currentPhase === 'discard' ? 'pointer' : 'not-allowed',
-                transition: 'all 0.3s ease',
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                fontWeight: '900',
-                boxShadow: currentPhase === 'discard' ? '0 0 20px rgba(255, 107, 107, 0.5)' : 'none'
-              }}
-              disabled={currentPhase !== 'discard'}
-              onClick={() => {
-                setSelectedCards([]);
-                setCurrentPhase('draw');
-              }}
-            >
-              📤 Discard & End Turn
-            </button>
-          </div>
-
-          {/* Quick Actions */}
-          <div style={{
-            marginTop: '25px',
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '15px'
-          }}>
-            <button
-              style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                background: 'rgba(0, 255, 0, 0.1)',
-                color: '#00ff00',
-                border: '2px solid #00ff00',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                fontWeight: 'bold'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0, 255, 0, 0.2)'}
-              onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0, 255, 0, 0.1)'}
-            >
-              ❓ Help
-            </button>
-
-            <button
-              style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                background: 'rgba(255, 107, 107, 0.1)',
-                color: '#ff6b6b',
-                border: '2px solid #ff6b6b',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                fontWeight: 'bold'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 107, 107, 0.2)'}
-              onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 107, 107, 0.1)'}
-            >
-              🏳️ Resign
-            </button>
-          </div>
-        </div>
+      <section className={styles.handDock} aria-label="Your hand">
+        <div className={styles.handMeta}><div><span>YOUR HAND</span><strong>{hand.length} cards</strong></div>{!resolvedMove ? <p>{selected.length} selected</p> : <p className={styles.successText}>{resolvedMove.label}</p>}</div>
+        <div className={styles.handScroller}>{hand.map((id) => { const active=selected.includes(id); return <button type="button" key={id} onClick={() => toggleCard(id)} className={`${styles.handCard} ${active ? styles.handCardSelected : ''}`} aria-pressed={active} aria-label={`Select Squad22 card ${id}`}><Image src={cardImage(id)} alt={`Squad22 card ${id}`} width={126} height={179} /><span className={styles.cardHint}>{active ? 'SELECTED' : 'CARD'}</span></button>; })}</div>
+        <div className={styles.actionStack}>{feedback && <p className={styles.feedback}>{feedback}</p>}<div className={styles.actionBar}>{!resolvedMove ? <><button type="button" onClick={() => { setSelected([]); setFeedback(''); }} className={styles.clearAction} disabled={!selected.length}>Clear</button><button type="button" onClick={resolveSelection} className={styles.primaryAction} disabled={!selected.length}>{step.action}</button></> : <button type="button" onClick={next} className={styles.primaryAction}>{stepIndex === steps.length - 1 ? 'See what your choice means' : 'Next decision'}<span aria-hidden="true">→</span></button>}</div></div>
       </section>
     </main>
   );
 }
+
+function Topbar({ stepIndex }: { stepIndex: number }) {
+  return <header className={styles.topbar}><Link href="/" className={styles.brand} aria-label="Squad22 home"><Image src="/images/logo.webp" alt="" width={42} height={42} priority /><span>SQUAD22</span></Link><div className={styles.progress} aria-label={`Decision ${stepIndex + 1} of ${steps.length}`}>{steps.map((item,index)=><span key={item.id} className={`${styles.progressDot} ${index <= stepIndex ? styles.progressDotActive : ''}`} />)}<strong>{stepIndex + 1}/{steps.length}</strong></div><span className={styles.demoBadge}>TACTICAL DEMO</span></header>;
+}
+
+function PositionSlot({ slot }: { slot: Slot }) {
+  const complete = slot.cards.length >= 2;
+  return <div className={`${styles.positionSlot} ${complete ? styles.positionSlotClosed : styles.positionSlotExposed}`}><div className={styles.positionTopline}><span>POSITION {slot.position}</span><strong>{complete ? 'COMPLETE' : 'STARTED'}</strong></div><div className={styles.slotCards}>{slot.cards.map((id,index)=><Image key={`${slot.owner}-${slot.position}-${id}`} src={cardImage(id)} alt={`Position ${slot.position} card`} width={88} height={125} className={index > 0 ? styles.slotCardSecond : undefined} />)}{!complete && <div className={styles.openCardSlot}>+</div>}</div></div>;
+}
+
+export default function GamePage() { return <Suspense fallback={<DemoLoading />}><GameShell /></Suspense>; }
+function DemoLoading() { return <main className={styles.gamePage}><div className={styles.loading}><Image src="/images/logo.webp" alt="Squad22" width={76} height={76} priority /><span>Preparing your hand…</span></div></main>; }
