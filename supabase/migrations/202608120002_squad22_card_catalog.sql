@@ -55,14 +55,14 @@ with names as (
       when id = any(array[2,6,10,14,20,22,28,30,34,38,44,3,7,11,15,17,23,25,31,35,39,41]) then 'verified'
       else 'reconstructed'
     end as trait_status,
-    case when id between 45 and 56 or id = 58 then 'verified' else 'provisional' end as points_status,
-    case when id = 57 then 'provisional' else 'verified' end as role_status
+    case when id between 45 and 56 or id = 58 then 'verified' when id = 57 then 'reconstructed' else 'provisional' end as points_status,
+    case when id = 57 then 'reconstructed' else 'verified' end as role_status
   from generate_series(1,58) id
 )
 insert into public.squad22_card_catalog
 (card_id,name,kind,position,trait,points,position_status,trait_status,points_status,role_status,source_note)
 select card_id,name,kind,position,trait,points,position_status,trait_status,points_status,role_status,
-       'Final artwork structure and artwork-era commits. Verification columns explicitly identify remaining metadata gaps.'
+       case when card_id=57 then 'Deck structure: 44 player + 12 staff leaves 2 Flex cards; card 58 is verified Joker/Flex and approved rules refer to Flex Cards in plural. Card 57 reconstructed as second Flex.' else 'Final artwork structure and artwork-era commits. Verification columns explicitly identify remaining metadata gaps.' end
 from cards
 on conflict (card_id) do update set
   name=excluded.name,
