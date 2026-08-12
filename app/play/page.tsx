@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { getSquad22Card } from '@/lib/squad22/deck';
 import {
   calculateRoundScore,
@@ -22,6 +22,7 @@ import {
   type TargetScore,
 } from '@/lib/squad22/engine';
 import { runAiTurn } from '@/lib/squad22/ai';
+import { formationSlotGrid } from '@/lib/squad22/formations';
 import {
   clearCloudPointer,
   clearLocalMatch,
@@ -45,19 +46,21 @@ function CardFace({id,selected=false,small=false,hidden=false,onClick,disabled,b
   return <div className={className} aria-label={label}>{contents}</div>;
 }
 
-function Slot({position,cards,globalOpen,compact=false}:{position:number;cards:number[];globalOpen:boolean;compact?:boolean}) {
-  return <div className={`${styles.slot} ${compact?styles.slotCompact:''} ${globalOpen?styles.slotGlobal:''} ${cards.length===2?styles.slotComplete:''}`} data-position={position}>
+function Slot({position,cards,globalOpen,compact=false,grid}:{position:number;cards:number[];globalOpen:boolean;compact?:boolean;grid:{column:number;row:number;line:'GK'|'DEF'|'MID'|'FWD'}}) {
+  const gridStyle:CSSProperties={gridColumn:grid.column,gridRow:grid.row};
+  return <div className={`${styles.slot} ${compact?styles.slotCompact:''} ${globalOpen?styles.slotGlobal:''} ${cards.length===2?styles.slotComplete:''}`} data-position={position} style={gridStyle} title={`${grid.line} · position ${position}`}>
     <span className={styles.slotNumber}>{position}</span>
-    {cards.length===0?<div className={styles.emptySlot}><span>{globalOpen?'GLOBAL':'OPEN'}</span></div>:<div className={styles.slotCards}>{cards.map((id,index)=><CardFace key={`${position}-${id}-${index}`} id={id} small />)}</div>}
+    {cards.length===0?<div className={styles.emptySlot}><span>{globalOpen?'GLOBAL':grid.line}</span></div>:<div className={styles.slotCards}>{cards.map((id,index)=><CardFace key={`${position}-${id}-${index}`} id={id} small />)}</div>}
   </div>;
 }
 
 function Pitch({state,playerIndex,compact=false}:{state:MatchState;playerIndex:0|1;compact?:boolean}) {
   const player=state.players[playerIndex];
   const globalSet=new Set(state.globalOpenPositions);
-  return <div className={`${styles.pitch} ${compact?styles.pitchCompact:''}`}>
+  const grid=formationSlotGrid(state.formation);
+  return <div className={`${styles.pitch} ${compact?styles.pitchCompact:''}`} data-formation={state.formation}>
     <span className={styles.pitchHalfway}/><span className={styles.pitchCircle}/><span className={styles.goalTop}/><span className={styles.goalBottom}/>
-    <div className={styles.pitchSlots}>{POSITIONS.map(position=>{const slot=player.squad.find(candidate=>candidate.position===position);return <Slot key={position} position={position} cards={slot?.cards??[]} globalOpen={globalSet.has(position)} compact={compact}/>;})}</div>
+    <div className={styles.pitchSlots} style={{gridTemplateColumns:'repeat(5, 1fr)'}}>{POSITIONS.map(position=>{const slot=player.squad.find(candidate=>candidate.position===position);return <Slot key={position} position={position} cards={slot?.cards??[]} globalOpen={globalSet.has(position)} compact={compact} grid={grid[position]}/>;})}</div>
     <div className={styles.staffRail}><span>STAFF</span>{[0,1,2].map(index=>player.staff[index]?<CardFace key={player.staff[index]} id={player.staff[index]} small/>:<div className={styles.staffEmpty} key={index}>+</div>)}</div>
   </div>;
 }
@@ -123,6 +126,7 @@ export default function FullMatchPage(){
   const canInteract=humanTurn&&!aiThinking&&!['round-end','match-end'].includes(state.phase);
   const optionIndexes=new Set(openOptions.map(option=>option.index));
   const eventLines=[...state.events].reverse().slice(0,5);
+  const requiredCard=state.requiredFirstPlayCardId?getSquad22Card(state.requiredFirstPlayCardId):null;
 
   const toggleCard=(id:number)=>{if(!canInteract||state.phase!=='play')return;if(discardMode){try{setState(discardAndPass(state,id));resetSelection();}catch(error){setMessage(error instanceof Error?error.message:'Cannot discard that card');}return;}setSelected(current=>current.includes(id)?current.filter(item=>item!==id):current.length<3?[...current,id]:current);setTargetPosition(undefined);setMessage('');};
   const commitMove=()=>{if(!chosenMove)return;try{setState(playMove(state,chosenMove));resetSelection();setMessage('');}catch(error){setMessage(error instanceof Error?error.message:'Illegal move');}};
@@ -136,17 +140,17 @@ export default function FullMatchPage(){
     <section className={styles.scoreboard}><div className={styles.teamScore}><span>{human.name}</span><strong>{human.totalScore}</strong><small>table {tablePoints(human)}</small></div><div className={styles.scoreCenter}><span>{humanTurn?'YOUR TURN':'GAFFER THINKING'}</span><b>{state.phase==='draw'?'DRAW':state.phase==='play'?'PLAY':'ROUND'}</b></div><div className={`${styles.teamScore} ${styles.teamScoreAway}`}><span>THE GAFFER</span><strong>{ai.totalScore}</strong><small>table {tablePoints(ai)}</small></div></section>
     {state.globalOpenPositions.length?<div className={styles.globalBar}><span>GLOBAL OPEN</span>{state.globalOpenPositions.map(position=><b key={position}>{position}</b>)}<small>Either squad may start these positions with one matching card.</small></div>:<div className={styles.globalBarMuted}>No global positions yet · a Trait Triple changes the table for both sides.</div>}
     <section className={styles.arena}>
-      <aside className={styles.opponentPanel}><div className={styles.panelTitle}><span>THE GAFFER</span><b>{ai.hand.length} cards</b></div><div className={styles.opponentHand}>{ai.hand.slice(0,7).map((id,index)=><CardFace key={`${id}-${index}`} id={id} small hidden/>)}</div><Pitch state={state} playerIndex={1} compact/></aside>
+      <aside className={styles.opponentPanel}><div className={styles.panelTitle}><span>THE GAFFER · {state.formation}</span><b>{ai.hand.length} cards</b></div><div className={styles.opponentHand}>{ai.hand.slice(0,7).map((id,index)=><CardFace key={`${id}-${index}`} id={id} small hidden/>)}</div><Pitch state={state} playerIndex={1} compact/></aside>
       <section className={styles.tableZone}>
         <div className={styles.piles}><button className={`${styles.drawPile} ${state.phase==='draw'&&canInteract?styles.pileActive:''}`} onClick={drawClosed} disabled={!canInteract||state.phase!=='draw'}><div className={styles.stackCards}><Image src="/images/card-back.webp" alt="Draw pile" fill sizes="100px"/></div><strong>{state.drawPile.length}</strong><span>DRAW PILE</span><small>Take 1</small></button><div className={styles.openPileWrap}><div className={styles.openPileLabel}><strong>OPEN PILE</strong><span>bottom → top</span></div><div className={styles.openPile}>{state.openPile.slice(-7).map((id,localIndex)=>{const absoluteIndex=Math.max(0,state.openPile.length-7)+localIndex;const legal=optionIndexes.has(absoluteIndex);const takeCount=state.openPile.length-absoluteIndex;return <CardFace key={`${id}-${absoluteIndex}`} id={id} small disabled={!legal||!canInteract||state.phase!=='draw'} onClick={legal&&canInteract&&state.phase==='draw'?()=>takeOpen(absoluteIndex):undefined} badge={legal&&state.phase==='draw'?`TAKE ${takeCount}`:absoluteIndex===state.openPile.length-1?'TOP':undefined}/>;})}{!state.openPile.length?<div className={styles.emptyOpen}>EMPTY</div>:null}</div></div></div>
-        <div className={styles.turnInstruction}><p>{aiThinking?'THE GAFFER IS READING THE TABLE':state.phase==='draw'?'CHOOSE ONE PILE':discardMode?'CHOOSE ONE CARD TO DISCARD':'BUILD YOUR SQUAD'}</p><h2>{aiThinking?'Thinking…':state.phase==='draw'?'Draw closed—or take a playable line from the Open Pile.':discardMode?'Your discard becomes the new top of the Open Pile.':'Select 1, 2 or 3 cards. Legal combinations reveal themselves.'}</h2>{message?<span className={styles.message}>{message}</span>:null}</div>
+        <div className={styles.turnInstruction}><p>{aiThinking?'THE GAFFER IS READING THE TABLE':state.phase==='draw'?'CHOOSE ONE PILE':requiredCard?'OPEN PILE COMMITMENT':discardMode?'CHOOSE ONE CARD TO DISCARD':'BUILD YOUR SQUAD'}</p><h2>{aiThinking?'Thinking…':state.phase==='draw'?'Draw closed—or take a playable line from the Open Pile.':requiredCard?`Your first play must include ${requiredCard.name}.`:discardMode?'Your discard becomes the new top of the Open Pile.':'Select 1, 2 or 3 cards. Legal combinations reveal themselves.'}</h2>{message?<span className={styles.message}>{message}</span>:null}</div>
         <Pitch state={state} playerIndex={0}/>
       </section>
       <aside className={styles.matchFeed}><div className={styles.panelTitle}><span>MATCH FEED</span><b>LIVE</b></div><div className={styles.feedLines}>{eventLines.map(item=><div key={item.id}><i className={item.actor==='human'?styles.youEvent:item.actor==='ai'?styles.aiEvent:styles.systemEvent}/><p>{item.text}</p></div>)}</div><div className={styles.rulePulse}><span>THE TURN</span><b>1 · DRAW</b><b>2 · PLAY</b><b>3 · DISCARD</b></div><button className={styles.leaveButton} onClick={abandon}>Leave match</button></aside>
     </section>
-    <section className={styles.handDock}><div className={styles.handTop}><div><span>YOUR HAND</span><b>{human.hand.length} cards</b></div>{state.phase==='play'&&canInteract?<div className={styles.handActions}><button className={discardMode?styles.activeTool:''} onClick={()=>{setDiscardMode(value=>!value);setSelected([]);setTargetPosition(undefined);}}>{discardMode?'Cancel discard':'Discard & end turn'}</button><button className={styles.playButton} onClick={commitMove} disabled={!chosenMove||discardMode}>{chosenMove?chosenMove.label:selected.length?'Not a legal move':'Select cards'} →</button></div>:null}</div>
+    <section className={styles.handDock}><div className={styles.handTop}><div><span>YOUR HAND</span><b>{human.hand.length} cards</b></div>{state.phase==='play'&&canInteract?<div className={styles.handActions}><button disabled={Boolean(requiredCard)} className={discardMode?styles.activeTool:''} onClick={()=>{setDiscardMode(value=>!value);setSelected([]);setTargetPosition(undefined);}}>{requiredCard?`Play ${requiredCard.name} first`:discardMode?'Cancel discard':'Discard & end turn'}</button><button className={styles.playButton} onClick={commitMove} disabled={!chosenMove||discardMode}>{chosenMove?chosenMove.label:selected.length?'Not a legal move':'Select cards'} →</button></div>:null}</div>
       {flexNeedsTarget?<div className={styles.positionChooser}><span>Place Flex at:</span>{selectedCandidates.map(move=><button key={move.position} className={targetPosition===move.position?styles.positionChosen:''} onClick={()=>setTargetPosition(move.position)}>{move.position}</button>)}</div>:null}
-      <div className={styles.handCards}>{human.hand.map((id,index)=><CardFace key={`${id}-${index}`} id={id} selected={selected.includes(id)} disabled={!canInteract||state.phase!=='play'} onClick={()=>toggleCard(id)} badge={discardMode?'DISCARD?':undefined}/>)}</div>
+      <div className={styles.handCards}>{human.hand.map((id,index)=><CardFace key={`${id}-${index}`} id={id} selected={selected.includes(id)} disabled={!canInteract||state.phase!=='play'} onClick={()=>toggleCard(id)} badge={requiredCard?.id===id?'PLAY FIRST':discardMode?'DISCARD?':undefined}/>)}</div>
       <div className={styles.handLegend}><span><i className={styles.legendPair}/>Pair: 2 same position</span><span><i className={styles.legendTriple}/>Triple: 3 same colour, different positions</span><span><i className={styles.legendGlobal}/>Global: 1 matching card</span><span>{humanMoves.length} legal move{humanMoves.length===1?'':'s'} available</span></div>
     </section>
     {state.phase==='round-end'||state.phase==='match-end'?<RoundModal state={state} onNext={nextRound} onNew={abandon}/>:null}
