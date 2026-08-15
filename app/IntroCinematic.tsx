@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './intro-cinematic.module.css';
 
 const cardImage = (id: number) => `/images/cards/${String(id).padStart(2, '0')}.webp`;
-const INTRO_KEY = 'squad22-cinematic-v5-seen';
 const INTRO_MS = 7900;
 
 export default function IntroCinematic() {
@@ -17,7 +16,6 @@ export default function IntroCinematic() {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
     setVisible(false);
-    try { window.sessionStorage.setItem(INTRO_KEY, '1'); } catch {}
   }, []);
 
   const enterRules = useCallback(() => {
@@ -33,10 +31,6 @@ export default function IntroCinematic() {
   }, [close]);
 
   useEffect(() => {
-    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    let hasSeen = false;
-    try { hasSeen = window.sessionStorage.getItem(INTRO_KEY) === '1'; } catch {}
-    if (!reducedMotion && !hasSeen) play();
     const replay = () => play();
     window.addEventListener('squad22:replay-intro', replay);
     return () => {
