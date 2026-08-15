@@ -2,7 +2,6 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
 import AnimatedRules from './AnimatedRules';
 import IntroCinematic from './IntroCinematic';
 import styles from './home.module.css';
@@ -12,26 +11,24 @@ const cardImage = (id: number) => `/images/cards/${String(id).padStart(2, '0')}.
 const faqs = [
   {
     question: 'What is Squad22?',
-    answer: 'Squad22 is an online football strategy card game about building a formation, controlling the shared Open Pile and deciding when to open positions for the whole table.',
+    answer: 'A football strategy card game built around formation, timing and a shared Open Pile. Build your own XI while every Trait Triple can change what is possible for the whole table.',
   },
   {
-    question: 'How does a position open?',
-    answer: 'A Position Pair opens and completes one position in your squad. A Trait Triple opens three different positions globally, so every player can start those positions with one matching-position card.',
+    question: 'What is playable now?',
+    answer: 'The tactical demo and the complete solo full-match beta against The Gaffer are live now. Payments remain disabled while launch QA is completed.',
   },
   {
-    question: 'Why does a Trait Triple change the game?',
-    answer: 'Because the three positions become available to everyone. Your triple accelerates your own squad, but it can also give an opponent a one-card route into those same positions on their side.',
+    question: 'How will the online game be priced?',
+    answer: '$14.99 as a one-time launch price. No subscription. Pay once, play forever.',
   },
   {
-    question: 'What is available now?',
-    answer: 'The cinematic, animated rules, tactical demo and full-match solo beta are available now. Payments remain disabled while the full game is tested.',
+    question: 'Is there a physical deck?',
+    answer: 'A $24.99 + shipping physical edition is planned after online demand is proven. The intended launch model is print-on-demand rather than inventory-heavy retail.',
   },
 ];
 
 export default function Home() {
-  const [squadName, setSquadName] = useState('');
-  const playerName = useMemo(() => squadName.trim() || 'Player', [squadName]);
-  const demoHref = `/game?mode=ai&player=${encodeURIComponent(playerName)}`;
+  const replayIntro = () => window.dispatchEvent(new Event('squad22:replay-intro'));
   const faqSchema = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -42,8 +39,6 @@ export default function Home() {
     })),
   };
 
-  const replayIntro = () => window.dispatchEvent(new Event('squad22:replay-intro'));
-
   return (
     <main className={styles.page}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
@@ -52,175 +47,200 @@ export default function Home() {
       <header className={styles.navShell}>
         <nav className={styles.nav} aria-label="Primary navigation">
           <a href="#top" className={styles.brand} aria-label="Squad22 home">
-            <Image src="/images/logo.webp" alt="Squad22" width={44} height={44} priority />
+            <Image src="/images/logo.webp" alt="Squad22" width={40} height={40} priority />
             <span>SQUAD22</span>
           </a>
+
           <div className={styles.navLinks}>
             <a href="#rules">How it plays</a>
-            <a href="#modes">Game modes</a>
+            <a href="#full-match">Full match</a>
             <a href="#pricing">Pricing</a>
-            <a href="#physical">Physical</a>
           </div>
+
           <div className={styles.navActions}>
             <button type="button" onClick={replayIntro}>Watch intro</button>
-            <Link href={demoHref}>Play free</Link>
+            <Link href="/play">Play full match</Link>
           </div>
         </nav>
       </header>
 
       <section id="top" className={styles.hero}>
-        <div className={styles.pitchWorld} aria-hidden="true">
-          <span className={styles.halfway} />
-          <span className={styles.centreCircle} />
-          <span className={styles.penaltyLeft} />
-          <span className={styles.penaltyRight} />
+        <div className={styles.heroNoise} aria-hidden="true" />
+        <div className={styles.stadiumGlow} aria-hidden="true" />
+        <div className={styles.heroPitch} aria-hidden="true">
+          <span className={styles.pitchHalfway} />
+          <span className={styles.pitchCircle} />
+          <span className={styles.pitchBoxLeft} />
+          <span className={styles.pitchBoxRight} />
         </div>
-        <div className={styles.floodlightLeft} aria-hidden="true" />
-        <div className={styles.floodlightRight} aria-hidden="true" />
-        <div className={styles.big22} aria-hidden="true">22</div>
 
         <div className={styles.heroInner}>
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>THE FOOTBALL CARD BATTLE</p>
-            <h1>Build the XI.<br /><span>Own the open.</span></h1>
+            <div className={styles.heroStatus}><span /> FULL MATCH BETA LIVE</div>
+            <p className={styles.eyebrow}>THE FOOTBALL STRATEGY CARD GAME</p>
+            <h1>
+              Build your XI.
+              <span>Change the whole table.</span>
+            </h1>
             <p className={styles.heroLead}>
-              Build your formation, control the Open Pile and decide when to change the whole table. A Trait Triple can accelerate your squad — and unlock the same positions for everyone else.
+              Complete positions. Build trait combinations. Control the Open Pile. Every aggressive move can accelerate your squad — or create an opening everyone can use.
             </p>
+
             <div className={styles.heroActions}>
-              <Link href={demoHref} className={styles.primaryCta}>Play free demo <span>→</span></Link>
-              <a href="#rules" className={styles.secondaryCta}>See the 3 moves</a>
+              <Link href="/play" className={styles.primaryCta}>Play the full match <span>→</span></Link>
+              <Link href="/game" className={styles.secondaryCta}>Try the 3-move demo</Link>
             </div>
-            <div className={styles.heroProof}>
+
+            <div className={styles.heroMeta}>
               <div><strong>58</strong><span>cards</span></div>
-              <div><strong>22 + 3</strong><span>full squad</span></div>
-              <div><strong>2</strong><span>players</span></div>
-              <div><strong>30 sec</strong><span>to understand</span></div>
+              <div><strong>11</strong><span>positions</span></div>
+              <div><strong>4</strong><span>traits</span></div>
+              <div><strong>1</strong><span>shared table</span></div>
             </div>
           </div>
 
-          <div className={styles.heroVisual} aria-label="Squad22 cards on a football pitch">
-            <div className={styles.cardShadow} />
-            <div className={`${styles.heroCard} ${styles.cardBack}`}><Image src="/images/card-back.webp" alt="Squad22 card back" width={260} height={364} priority /></div>
-            <div className={`${styles.heroCard} ${styles.cardLeft}`}><Image src={cardImage(2)} alt="Squad22 player card" width={260} height={369} priority /></div>
-            <div className={`${styles.heroCard} ${styles.cardRight}`}><Image src={cardImage(10)} alt="Squad22 player card" width={260} height={369} priority /></div>
-            <div className={styles.matchBug}>
-              <span>LIVE TACTICAL MOMENT</span>
-              <div><strong>GLOBAL OPEN</strong><b>1 · 3 · 9</b></div>
-              <div><strong>NEXT MOVE</strong><b>YOURS</b></div>
+          <div className={styles.heroVisual} aria-label="Squad22 trait triple on a football pitch">
+            <div className={styles.visualLabel}><span>TACTICAL MOMENT</span><b>CONTROL TRIPLE</b></div>
+            <div className={styles.cardArc}>
+              <div className={`${styles.heroCard} ${styles.heroCardOne}`}><Image src={cardImage(2)} alt="Squad22 card" width={250} height={355} priority /></div>
+              <div className={`${styles.heroCard} ${styles.heroCardTwo}`}><Image src={cardImage(10)} alt="Squad22 card" width={250} height={355} priority /></div>
+              <div className={`${styles.heroCard} ${styles.heroCardThree}`}><Image src={cardImage(34)} alt="Squad22 card" width={250} height={355} priority /></div>
+            </div>
+            <div className={styles.openPositions}>
+              <span>GLOBAL OPEN</span>
+              <div><b>1</b><b>3</b><b>9</b></div>
+              <small>Three positions. Both squads can use them.</small>
+            </div>
+            <div className={styles.nextCard}>
+              <Image src={cardImage(1)} alt="Squad22 card ready to use an open position" width={132} height={188} priority />
+              <span>YOUR NEXT DECISION</span>
             </div>
           </div>
         </div>
 
-        <div className={styles.heroTicker} aria-hidden="true">
-          <span>PAIR = COMPLETE</span><i>•</i><span>TRIPLE = GLOBAL</span><i>•</i><span>OPEN PILE = PRESSURE</span><i>•</i><span>READ THE TABLE</span>
+        <div className={styles.heroRail}>
+          <span>PAIR — COMPLETE</span>
+          <i />
+          <span>TRIPLE — OPEN GLOBALLY</span>
+          <i />
+          <span>OPEN PILE — CONTROL THE TEMPO</span>
         </div>
       </section>
 
-      <section id="rules" className={styles.rulesWrap}>
-        <div className={styles.sectionHeader}>
+      <section className={styles.statementSection}>
+        <div className={styles.statementIndex}>01</div>
+        <p>Football instincts. Card-table nerve.</p>
+        <h2>The move that helps you can help everyone.</h2>
+      </section>
+
+      <section id="rules" className={styles.rulesSection}>
+        <div className={styles.sectionIntro}>
           <div>
-            <p className={styles.eyebrow}>ONE MINUTE FROM “WHAT?” TO “ONE MORE TURN.”</p>
-            <h2>See the move.<br />Feel the consequence.</h2>
+            <p className={styles.eyebrow}>THE WHOLE IDEA IN THREE MOVES</p>
+            <h2>Learn it by seeing it.</h2>
           </div>
-          <p>Squad22 should not need a lecture. These three moments explain the core tension: complete one position, open three globally, then decide who benefits from that new space first.</p>
+          <p>
+            Squad22 does not need a wall of instructions. Secure a position with a Pair. Open three positions globally with a Trait Triple. Then decide who gets value from that new space first.
+          </p>
         </div>
         <AnimatedRules />
       </section>
 
-      <section id="modes" className={styles.modesSection}>
-        <div className={styles.modesTop}>
-          <p className={styles.eyebrow}>PLAY SQUAD22</p>
-          <h2>Start with the decision.<br />Grow into the match.</h2>
+      <section id="full-match" className={styles.matchSection}>
+        <div className={styles.matchCopy}>
+          <p className={styles.eyebrow}>FULL MATCH · SOLO VS AI</p>
+          <h2>Not a demo.<br />A complete match.</h2>
+          <p>
+            Draw from the closed deck or attack the stacked Open Pile. Build all 11 positions, add staff, manage global openings and carry your score across rounds until somebody reaches the target.
+          </p>
+          <div className={styles.matchFacts}>
+            <span>5 or 7 card hand</span>
+            <span>300 / 500 / 600 target</span>
+            <span>Save & resume</span>
+            <span>The Gaffer AI</span>
+          </div>
+          <Link href="/play" className={styles.matchCta}>Enter the full match <span>→</span></Link>
         </div>
-        <div className={styles.modeGrid}>
-          <article className={`${styles.modeCard} ${styles.modeLive}`}>
-            <span className={styles.modeStatus}>PLAYABLE NOW</span>
-            <div className={styles.modeNumber}>01</div>
-            <h3>Tactical Demo</h3>
-            <p>Three real decisions. No registration. Learn the risk/reward system by actually choosing cards.</p>
-            <Link href={demoHref}>Play free <span>→</span></Link>
-          </article>
-          <article className={styles.modeCard}>
-            <span className={styles.modeStatus}>FULL-MATCH BETA LIVE</span>
-            <div className={styles.modeNumber}>02</div>
-            <h3>Full Online Match</h3>
-            <p>Complete deck, stacked Open Pile, multi-round scoring, global Trait Triple openings and The Gaffer AI. Test the paid core before checkout goes live.</p>
-            <Link href="/play">Play full match <span>→</span></Link>
-          </article>
-          <article className={styles.modeCard}>
-            <span className={styles.modeStatus}>AFTER SOLO VALIDATION</span>
-            <div className={styles.modeNumber}>03</div>
-            <h3>Head-to-Head</h3>
-            <p>Play another person with the same full ruleset once the solo match proves retention and demand.</p>
-            <span className={styles.modePending}>Multiplayer later</span>
-          </article>
+
+        <div className={styles.matchBoard} aria-label="Squad22 match preview">
+          <div className={styles.scoreStrip}><span>YOU</span><b>170</b><em>ROUND 3</em><b>145</b><span>GAFFER</span></div>
+          <div className={styles.boardPitch}>
+            <span className={styles.boardHalfway} />
+            <span className={styles.boardCircle} />
+            <div className={styles.boardCardA}><Image src={cardImage(1)} alt="" width={96} height={136} /></div>
+            <div className={styles.boardCardB}><Image src={cardImage(2)} alt="" width={96} height={136} /></div>
+            <div className={styles.boardCardC}><Image src={cardImage(10)} alt="" width={96} height={136} /></div>
+            <div className={styles.boardCardD}><Image src={cardImage(34)} alt="" width={96} height={136} /></div>
+            <div className={styles.globalFlag}>GLOBAL OPEN · 3 / 9</div>
+          </div>
+          <div className={styles.boardFooter}><span>DRAW</span><strong>OPEN PILE</strong><span>PLAY</span></div>
         </div>
       </section>
 
       <section id="pricing" className={styles.pricingSection}>
-        <div className={styles.pricingIntro}>
-          <p className={styles.eyebrow}>SIMPLE FROM DAY ONE</p>
-          <h2>No packs. No subscription treadmill.</h2>
-          <p>The launch model is deliberately simple: learn free, then unlock the complete online game once. Payments stay disabled until the full match is finished and tested.</p>
+        <div className={styles.pricingHeader}>
+          <p className={styles.eyebrow}>PRICING WITHOUT THE NONSENSE</p>
+          <h2>One game. One price.</h2>
+          <p>No card packs. No season pass. No subscription treadmill.</p>
         </div>
-        <div className={styles.priceGrid}>
-          <article>
-            <span>TACTICAL DEMO</span>
-            <strong>FREE</strong>
-            <p>Cinematic, animated rules and playable tactical decisions.</p>
-            <Link href={demoHref}>Play now</Link>
-          </article>
-          <article className={styles.priceFeatured}>
-            <span>FULL ONLINE GAME</span>
-            <strong>$14.99 <small>one-time launch price</small></strong>
-            <p>Launch price. Pay once, play forever. Full match versus AI first; multiplayer can follow after validation.</p>
-            <Link href="/play">Play full-match beta</Link>
-          </article>
-          <article>
-            <span>PHYSICAL EDITION</span>
-            <strong>$24.99<small> + shipping</small></strong>
-            <p>Planned print-on-demand edition. No inventory commitment before demand is proven.</p>
-            <button type="button" disabled>Physical drop later</button>
-          </article>
+
+        <div className={styles.priceRows}>
+          <div className={styles.priceRow}>
+            <div><span>01</span><strong>Full Online Game</strong><small>Launch edition · payments not active yet</small></div>
+            <div className={styles.priceAmount}><b>$14.99</b><span>one time</span></div>
+            <Link href="/play">Play beta now →</Link>
+          </div>
+          <div className={styles.priceRow}>
+            <div><span>02</span><strong>Physical Edition</strong><small>Planned print-on-demand release</small></div>
+            <div className={styles.priceAmount}><b>$24.99</b><span>+ shipping</span></div>
+            <span className={styles.comingSoon}>Planned</span>
+          </div>
         </div>
       </section>
 
       <section id="physical" className={styles.physicalSection}>
-        <div className={styles.physicalVisual}>
-          <div className={`${styles.physicalCard} ${styles.physicalOne}`}><Image src={cardImage(1)} alt="Squad22 physical card" width={220} height={312} /></div>
-          <div className={`${styles.physicalCard} ${styles.physicalTwo}`}><Image src={cardImage(34)} alt="Squad22 physical card" width={220} height={312} /></div>
-          <div className={`${styles.physicalCard} ${styles.physicalThree}`}><Image src="/images/card-back.webp" alt="Squad22 physical card back" width={220} height={308} /></div>
+        <div className={styles.physicalCards} aria-hidden="true">
+          <div className={`${styles.physicalCard} ${styles.physicalBack}`}><Image src="/images/card-back.webp" alt="" width={230} height={322} /></div>
+          <div className={`${styles.physicalCard} ${styles.physicalLeft}`}><Image src={cardImage(1)} alt="" width={230} height={327} /></div>
+          <div className={`${styles.physicalCard} ${styles.physicalRight}`}><Image src={cardImage(34)} alt="" width={230} height={327} /></div>
         </div>
         <div className={styles.physicalCopy}>
-          <p className={styles.eyebrow}>WHEN DIGITAL DEMAND EARNS IT</p>
-          <h2>The same tension.<br />On the table.</h2>
-          <p>The physical deck comes after the online game proves demand. The intended fulfillment model is print-on-demand, so there is no need to finance boxes of inventory before players ask for them.</p>
-          <div className={styles.physicalFacts}><span>No inventory</span><span>Print on demand</span><span>Same 58-card system</span></div>
+          <p className={styles.eyebrow}>THE DECK COMES AFTER THE DEMAND</p>
+          <h2>Digital first.<br />Physical when earned.</h2>
+          <p>
+            The online game proves whether people actually want to play Squad22. Once demand is real, the same 58-card system moves to a print-on-demand physical edition — without financing piles of inventory first.
+          </p>
+          <div className={styles.physicalLine}><span>58-card system</span><span>Print on demand</span><span>$24.99 + shipping planned</span></div>
         </div>
       </section>
 
-      <section className={styles.playSection}>
-        <div className={styles.playPanel}>
-          <div>
-            <p className={styles.eyebrow}>YOUR FIRST KICK</p>
-            <h2>Stop reading.<br />Make the move.</h2>
-          </div>
-          <div className={styles.playForm}>
-            <label htmlFor="squad-name">Squad name <span>optional</span></label>
-            <input id="squad-name" type="text" value={squadName} onChange={(event) => setSquadName(event.target.value)} placeholder="Northside FC" maxLength={32} autoComplete="off" />
-            <Link href={demoHref}>Enter the pitch <span>→</span></Link>
-            <small>No account. No payment. Immediate play.</small>
-          </div>
+      <section className={styles.finalCta}>
+        <div>
+          <p className={styles.eyebrow}>THE TABLE IS OPEN</p>
+          <h2>Build the XI.<br />Own the decision.</h2>
+        </div>
+        <div className={styles.finalActions}>
+          <Link href="/play">Play full match <span>→</span></Link>
+          <button type="button" onClick={replayIntro}>Watch the 8-second intro</button>
+          <small>Free during beta · no payment required</small>
         </div>
       </section>
 
       <section className={styles.faqSection}>
-        <div className={styles.faqTitle}><p className={styles.eyebrow}>QUICK ANSWERS</p><h2>Before kickoff.</h2></div>
-        <div className={styles.faqGrid}>{faqs.map((item) => <article key={item.question}><h3>{item.question}</h3><p>{item.answer}</p></article>)}</div>
+        <div className={styles.faqHeading}><p className={styles.eyebrow}>QUICK ANSWERS</p><h2>Before kickoff.</h2></div>
+        <div className={styles.faqList}>
+          {faqs.map((item, index) => (
+            <article key={item.question}>
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <h3>{item.question}</h3>
+              <p>{item.answer}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <footer className={styles.footer}>
-        <div className={styles.footerBrand}><Image src="/images/logo.webp" alt="" width={42} height={42} /><span>SQUAD22</span></div>
+        <div className={styles.footerBrand}><Image src="/images/logo.webp" alt="" width={38} height={38} /><span>SQUAD22</span></div>
         <p>Football strategy. Card-table nerve.</p>
         <div className={styles.footerLinks}><Link href="/imprint">Imprint</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link></div>
         <span>© {new Date().getFullYear()} Squad22</span>
